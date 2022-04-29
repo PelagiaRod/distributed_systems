@@ -17,11 +17,6 @@ public class Publisher implements Runnable {
     public static void main(String[] args) throws SocketException {
         Publisher publisher = new Publisher(new ProfileName("Gigi"));
         publisher.push("Gigi", new Value());
-        //publisher.run();
-        //Publisher publisher1 = new Publisher();
-        //publisher1.run();
-        //Publisher publisher2 = new Publisher();
-        //publisher2.run();
     }
 
     public Publisher() {
@@ -66,26 +61,27 @@ public class Publisher implements Runnable {
     }
 
     void push(String profName, Value mess) throws SocketException {
-        //UDP doesn't need threads
-        DatagramSocket datagramSocket1 = new DatagramSocket();
-        byte[] buffer;
-        while (true){
-            try{
-                Scanner scanner = new Scanner(System.in);
-                String messageToSend = scanner.nextLine();
-                buffer = messageToSend.getBytes();
-                DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length, InetAddress.getLocalHost(), 1234);
-                datagramSocket1.send(datagramPacket);
-                datagramSocket1.receive(datagramPacket);
-                String messageFromServer = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
-                System.out.println("The server says : " + messageFromServer);
+         try {
+                client = new Socket("127.0.0.1", 4321);
+                System.out.println("Hi there!");
 
+                while (true) {
+                    System.out.println("Enter your text: ");
+                    Scanner sc = new Scanner(System.in);
+                    String str = sc.nextLine();
+                    OutputStreamWriter os = new OutputStreamWriter(client.getOutputStream());
+                    PrintWriter out = new PrintWriter(os);
+                    out.println(str);
+                    os.flush();
+                    PublisherHandler handler = new PublisherHandler(client);
+                    Thread t = new Thread(handler);
+                    t.start();
+                }
 
-            } catch(IOException e){
+            } catch (IOException e) {
                 e.printStackTrace();
-                break;
+               // break;
             }
-        }
     }
 
 
@@ -97,11 +93,26 @@ public class Publisher implements Runnable {
 
         public PublisherHandler(Socket client) {
             this.client = client;
+
         }
 
         @Override
         public void run() {
+            //TCP
+            try {
+                //out = new ObjectOutputStream(connection.getOutputStream());
+                //in = new ObjectInputStream(connection.getInputStream());
 
+
+                BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in));
+                while (true)
+                {
+                    String message = inReader.readLine();
+                    System.out.println(message);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

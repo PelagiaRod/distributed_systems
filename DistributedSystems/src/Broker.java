@@ -15,13 +15,18 @@ public class Broker extends Thread {
     String topic;
 
     public static void main(String args[]) throws IOException {
-        DatagramSocket datagramSocket = new DatagramSocket(1234);
-        Broker server = new Broker(datagramSocket);
+        ServerSocket serverSocket = new ServerSocket(4321);
+        Broker server = new Broker(serverSocket);
         server.pull("Hello");
     }
 
     public Broker(){
 
+    }
+	
+    public Broker(ServerSocket serverSocket)
+    {
+        this.serverSocket = serverSocket;
     }
 
     public Broker(String topic){
@@ -252,39 +257,39 @@ public class Broker extends Thread {
     }
 
     
-    void pull(String brokerName) throws SocketException {
-        //byte[] buffer = new byte[1024]; //= mf.multimediaFileChunk;
-        while(true){
-            try{
-                //receive
-                DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length);
-                datagramSocket.receive(datagramPacket);
-                InetAddress inetAddress = datagramPacket.getAddress();
-                int port = datagramPacket.getPort();
-                String messageFromClient = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
-                System.out.println("Message from client: " + messageFromClient);
-                //send
-                datagramPacket = new DatagramPacket(buffer, buffer.length, inetAddress, port);
-                datagramSocket.send(datagramPacket);
-            }catch(IOException e){
-                e.printStackTrace();
-                break;
-            }
-        }
-    }
-
-
     static class BrokerHandler implements Runnable {
-        //Broker Handler is used to handle threats
-        //will be needed to handle brokers
         private Socket client;
+        //private ObjectOutputStream out;
+        //private ObjectInputStream in;
+        private PrintWriter out;
+        private BufferedReader in;
 
         public BrokerHandler(Socket client) {
             this.client = client;
+
         }
 
         @Override
         public void run() {
+           // while (true) {
+                try {
+                    //in = new ObjectInputStream(client.getInputStream());
+                    //out = new ObjectOutputStream(client.getOutputStream());
+                    //out.flush();
+
+                    //out = new PrintWriter(client.getOutputStream(), true);
+                    //in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                    BufferedReader br = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                    String str = br.readLine();
+                    while (str != null) {
+                        System.out.println("Publisher data : " + str);
+                        str = br.readLine();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                  //  break;
+                }
+           // }
         }
     }
 }

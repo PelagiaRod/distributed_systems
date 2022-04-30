@@ -1,7 +1,28 @@
 import java.util.List;
+import java.io.*;
+import java.net.*;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.security.MessageDigest;
+import java.util.Collections;
+import java.util.HashMap;
+import java.math.BigInteger;
+import java.io.*;
+
 
 public class Node implements Runnable{
     List<Broker> brokers;
+
+    private static File currDirectory = new File(new File(".").getAbsolutePath());
+    private static String currDirectoryPath = currDirectory.getAbsolutePath().substring(0,currDirectory.getAbsolutePath().length() - 1);
+    private static String homePath = currDirectory + "Database\\";
+    private static String brokerstxt = homePath + "Brokers.txt";
+    private static String topicsPath = homePath + "Topics.txt";
+    private static String publishersTopics = homePath + "PublishersTopics.txt";
+    private  ArrayList<Topic> topicsList= new ArrayList<>();
+    private  ArrayList<Broker> brokersList= new ArrayList<>();
 
     void connect(){
 
@@ -16,6 +37,85 @@ public class Node implements Runnable{
     void updateNodes(){
 
     }
+
+    public  ArrayList<Broker> loadBrokers(){
+        BufferedReader buffReader;
+        FileReader fReader;
+        String line;
+        String brokerName,ip;
+        int port;
+        try
+        {
+            fReader = new FileReader(brokerstxt);
+            buffReader = new BufferedReader(fReader);
+
+
+
+            while ((line = buffReader.readLine()) != null) {
+                String[] token = line.split(",");
+
+                brokerName = token[0].trim();
+                ip = token[1].trim();
+                port = Integer.parseInt(token[2].trim());
+                Broker broker = new Broker(brokerName, ip, port);
+                brokersList.add(broker);
+
+            }
+            buffReader.close();
+
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return brokersList;
+    }
+
+    public  ArrayList<String> readPublisherTopics(String name){
+        BufferedReader buffer;
+        FileReader fr;
+        String line;
+        String pubName;
+        String list;
+        ArrayList<String> lTPub= new ArrayList<>() ;
+        try
+        {
+            fr = new FileReader(publishersTopics);
+            buffer = new BufferedReader(fr);
+
+
+
+            while ((line = buffer.readLine()) != null) {
+                String[] token = line.split(":");
+
+                pubName = token[0].trim();
+                list = token[1].trim();
+                token = list.split(",");
+                for(int i=0;i<token.length;i++){
+                    lTPub.add(token[i]);
+                }
+            }
+            buffer.close();
+
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return lTPub;
+    }
+
+
+    public ArrayList<Topic> getTopicsList(){
+        return this.topicsList;
+    }
+    public ArrayList<Broker> getAllBrokers(){
+        return this.brokersList;
+    }
+
+
 
     @Override
     public void run(){

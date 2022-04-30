@@ -63,6 +63,16 @@ public class Publisher implements Runnable {
     }
 
     void push(String profName, Value mess) throws SocketException {
+         try {
+            client = new Socket("127.0.0.1", 4321);
+
+            PublisherHandler handler = new PublisherHandler(client);
+            Thread t = new Thread(handler);
+            t.start();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        /* send text
         try {
             Socket clientSocket = new Socket("127.0.0.1", 4321);
             System.out.println("Hi there!");
@@ -83,7 +93,7 @@ public class Publisher implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
             // break;
-        }
+        }*/
     }
     private void setPubOwnTopics(String name) {
         Node n = new Node();
@@ -124,18 +134,37 @@ public class Publisher implements Runnable {
 
         @Override
         public void run() {
-            //TCP
             try {
+                FileInputStream fileInputStream = new FileInputStream("C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\ΚΑΤΑΝΕΜΗΜΕΝΑ\\Red_Kitten_01.jpg");
+                File file = new File("C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\ΚΑΤΑΝΕΜΗΜΕΝΑ\\Red_Kitten_01.jpg");
+
+                DataOutputStream dataOutputStream = new DataOutputStream(client.getOutputStream());
+                String filename = "marias_wedding.mp4";
+                byte[] fileNameBytes = filename.getBytes(); //StandardCharsets.UTF_8
+
+                byte[] fileContentBytes = new byte[(int) file.length()];
+
+                fileInputStream.read(fileContentBytes); //, 0, fileContentBytes.length);
+
+                dataOutputStream.writeInt(fileNameBytes.length);
+                dataOutputStream.write(fileNameBytes);
+
+                dataOutputStream.writeInt(fileContentBytes.length);
+                dataOutputStream.write(fileContentBytes);
+
+                //dataOutputStream.flush();
+                client.close();
+
+            /*  Sending messages
                 //out = new ObjectOutputStream(connection.getOutputStream());
                 //in = new ObjectInputStream(connection.getInputStream());
 
-
                 BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in));
-                while (true)
+               while (true)
                 {
                     String message = inReader.readLine();
                     System.out.println(message);
-                }
+                }*/
             } catch (IOException e) {
                 e.printStackTrace();
             }

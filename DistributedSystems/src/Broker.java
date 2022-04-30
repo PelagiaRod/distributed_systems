@@ -344,6 +344,35 @@ public class Broker extends Thread {
         return this.topicsQueue;
     }
 
+	void pull(String brokerName) {
+
+        try {
+            while(true) {
+                Socket client = serverSocket.accept();
+                System.out.println("Publisher is connected!");
+                //serverSocket = new ServerSocket(4321);
+                BrokerHandler handler = new BrokerHandler(client);
+                //handler.run();
+                Thread thread = new Thread(handler);
+                thread.start();
+            }
+        } catch (IOException e){
+            closeBroker();
+            //e.printStackTrace();
+        }
+
+    }
+
+    public void closeBroker(){
+        try{
+            if(serverSocket != null)
+            {
+                serverSocket.close();
+            }
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+    }
 
 
     static class BrokerHandler implements Runnable {
@@ -352,6 +381,7 @@ public class Broker extends Thread {
         //private ObjectInputStream in;
         private PrintWriter out;
         private BufferedReader in;
+        byte[] fileData;
 
         public BrokerHandler(Socket client) {
             this.client = client;
@@ -360,25 +390,49 @@ public class Broker extends Thread {
 
         @Override
         public void run() {
-            // while (true) {
-            try {
-                //in = new ObjectInputStream(client.getInputStream());
-                //out = new ObjectOutputStream(client.getOutputStream());
-                //out.flush();
+            //while (client.isConnected()) {
+                try {
+                    DataInputStream dataInputStream = new DataInputStream(client.getInputStream());
 
-                //out = new PrintWriter(client.getOutputStream(), true);
-                //in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-                BufferedReader br = new BufferedReader(new InputStreamReader(client.getInputStream()));
-                String str = br.readLine();
-                while (str != null) {
-                    System.out.println("Publisher data : " + str);
-                    str = br.readLine();
+                    int fileNameLength = dataInputStream.readInt();
+
+                    if (fileNameLength > 0) {
+                        byte[] fileNameBytes = new byte[fileNameLength];
+                        dataInputStream.readFully(fileNameBytes, 0, fileNameBytes.length);
+                        String fileName = new String(fileNameBytes);
+
+                        int fileContentLength = dataInputStream.readInt();
+
+                        if (fileContentLength > 0) {
+                            byte[] fileContentBytes = new byte[fileContentLength];
+                            dataInputStream.readFully(fileContentBytes, 0, fileContentLength);
+                            File fileToDownload = new File("C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\mediaFile\\Red_Kitten_01.jpg");
+                            try{
+                                FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
+                                fileOutputStream.write(fileContentBytes);
+                                fileOutputStream.close();
+                            }catch(IOException error){
+                                error.printStackTrace();
+                            }
+                        }
+
+
+                        System.out.println(fileName);
+                    }
+
+                /*
+                   SEND MESSAGES
+                    BufferedReader br = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                    String str = br.readLine();
+                    while (str != null) {
+                        System.out.println("Publisher data : " + str);
+                        str = br.readLine();
+                    }*/
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    //break;
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-                //  break;
-            }
-            // }
+          //  }
         }
     }
 }

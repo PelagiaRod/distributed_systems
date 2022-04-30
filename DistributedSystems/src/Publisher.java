@@ -11,8 +11,10 @@ public class Publisher implements Runnable {
     private DatagramSocket datagramSocket;
     private InetAddress inetAddress;
     private byte[] buffer;
-    private String ipAddress = "127.0.0.1"; //must be taken dynamically so hush code can work correctly
+    private List<Topic> pubTopicList;
+    private String ipAddress = "127.0.0.1"; //must be taken dynamically so hash code can work correctly
     private int port = 1234; //must be taken dynamically so hush code can work correctly
+
 
     public static void main(String[] args) throws SocketException {
         Publisher publisher = new Publisher(new ProfileName("Gigi"));
@@ -61,38 +63,62 @@ public class Publisher implements Runnable {
     }
 
     void push(String profName, Value mess) throws SocketException {
-         try {
-                client = new Socket("127.0.0.1", 4321);
-                System.out.println("Hi there!");
+        try {
+            Socket clientSocket = new Socket("127.0.0.1", 4321);
+            System.out.println("Hi there!");
 
-                while (true) {
-                    System.out.println("Enter your text: ");
-                    Scanner sc = new Scanner(System.in);
-                    String str = sc.nextLine();
-                    OutputStreamWriter os = new OutputStreamWriter(client.getOutputStream());
-                    PrintWriter out = new PrintWriter(os);
-                    out.println(str);
-                    os.flush();
-                    PublisherHandler handler = new PublisherHandler(client);
-                    Thread t = new Thread(handler);
-                    t.start();
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
-               // break;
+            while (true) {
+                System.out.println("Enter your text: ");
+                Scanner sc = new Scanner(System.in);
+                String str = sc.nextLine();
+                OutputStreamWriter os = new OutputStreamWriter(clientSocket.getOutputStream());
+                PrintWriter out = new PrintWriter(os);
+                out.println(str);
+                os.flush();
+                PublisherHandler handler = new PublisherHandler(clientSocket);
+                Thread t = new Thread(handler);
+                t.start();
             }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            // break;
+        }
+    }
+    private void setPubOwnTopics(String name) {
+        Node n = new Node();
+        ArrayList<String> tmp=n.readPublisherTopics(name);
+        if(!getpubTopicList().isEmpty()){
+            for(Topic t: getpubTopicList()){
+                for(String s: tmp){
+                    if(s.equals(t.getBusLine())){
+                        this.responsibleForTopics.add(t);
+                    }
+                }
+            }
+        }
+    }
+
+
+    public List<Topic> getpubTopicList(){
+        return this.pubTopicList;
+
+    }
+    //create func in broker to read topics and create pubTopicList from this
+    public void setpubTopicList(Node n){
+        this.pubTopicList= n.getTopicsList();
     }
 
 
 
+
     public static class PublisherHandler implements Runnable {
-        private Socket client;
+        private Socket clientSocket;
         private ObjectOutputStream out;
         private ObjectInputStream in;
 
-        public PublisherHandler(Socket client) {
-            this.client = client;
+        public PublisherHandler(Socket clientS) {
+            this.clientSocket = clientS;
 
         }
 
@@ -114,6 +140,7 @@ public class Publisher implements Runnable {
                 e.printStackTrace();
             }
         }
+
     }
 }
 /* TRASH CODE
@@ -183,4 +210,3 @@ might be useless
             }
 
  */
-

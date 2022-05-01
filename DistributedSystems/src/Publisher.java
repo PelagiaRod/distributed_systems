@@ -63,7 +63,9 @@ public class Publisher implements Runnable {
 
     }
 
-    void push(String topicName, Value multimediaFile) {
+   //synchronized method in order to avoid a race condition and
+    // ALLOW only one thread to execute this block at any given time
+    public synchronized void push(String topicName, Value multimediaFile) {
         try {
             ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
             Pair<String, Value> pairObject = new Pair<>(topicName,multimediaFile);
@@ -73,7 +75,6 @@ public class Publisher implements Runnable {
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
-
 
 
 

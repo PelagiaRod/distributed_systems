@@ -26,12 +26,15 @@ public class Broker extends Thread {
     private static List<Broker> allBrokers;
     private String name, ip;
     private int port;
+    private long hashBroker; // == hashBroker
     private List<Consumer> registeredConsumers;
     private List<Topic> relatedTopics;		//hashmap == queue
     private HashMap<Topic,ArrayList<Queue<Value>>> topicsQueue;
     private static List<Consumer> allConsumers;
     private static List<Publisher> allPublishers;
     private ServerSocket serverSocket;
+    private HashMap<Topic,ArrayList<Queue<Value>>> queueOfTopics;	//==topicsQueue
+
 
 
 
@@ -87,14 +90,22 @@ public class Broker extends Thread {
     public void setPort(int port) {
         this.port = port;
     }
+    public void setQueueOfTopics(HashMap<Topic,ArrayList<Queue<Value>>> q){
+        this.queueOfTopics = q;
+    }
+    public HashMap<Topic,ArrayList<Queue<Value>>> getQueueOfTopics(){
+        return this.queueOfTopics;
+    }
+
 
     public void init() {
         Node n = new Node();
         // n.readRouteCodes();
         this.allBrokers=n.loadBrokers();
-        //setTopics(n);
-        //setPubOwnTopics(this.name);
+        //dhmiourgei lista me ta topics kai arxikopoiei ta related topics
+        n.readtopicsList();
         this.relatedTopics = n.getTopicsList();
+        //setPubOwnTopics(this.name);
         setTopicQueue(n);
         connectToBroker();
     }
@@ -222,9 +233,8 @@ public class Broker extends Thread {
                 ArrayList<Queue<Value>> val = new ArrayList<>();;
                 q.put(t,val);
             }
-            b.settopicsQueue(q);
+            b.setTopicQueue(q);
         }
-
     }
 
 
@@ -242,6 +252,8 @@ public class Broker extends Thread {
             return null;
         }
     }
+
+
 
 
 
@@ -271,8 +283,10 @@ public class Broker extends Thread {
         BigInteger no = new BigInteger(1, messageDigest);
         //return Math.abs(no.longValue());
         //convert BigInteger to long and return it
+        // longValue() returns the value of this Long object as a long after the conversion.
         return no.longValue();
     }
+
     /*
             void pull(String brokerName) {
             try {
@@ -303,7 +317,7 @@ public class Broker extends Thread {
     */
     //get all the topics and calculate a hash value for each topic and put them inside topicHashes list and return
     private HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
-        List<Topic> topics = getTopicsList();
+        List<Topic> topics = getRelatedTopics();
         HashMap<String, Long> topicHashes = new HashMap<>();
         for (Topic t : topics) {
             long h = hashCode(t.getChannelName());
@@ -312,7 +326,7 @@ public class Broker extends Thread {
         return topicHashes;
     }
 
-    private void hashOfBrokers() {
+    private void hashOfBrokers() throws NoSuchAlgorithmException {
         //brokers is a list of all available brokers
         List<Broker> brokers = getAllBrokers();
         //iterate the list of brokers
@@ -348,45 +362,20 @@ public class Broker extends Thread {
             }
         }
     }
-    //ok
-    public void readtopicsList(){
-        FileReader fReader;
-        BufferedReader buffReader;
-        String row;
-        String topicName;
-
-        try{
-            fReader = new FileReader(topicsPath);
-            buffReader = new BufferedReader(fReader);
-
-            while( (row = buffReader.readLine() ) != null) {
-                //xwrise thn grammh ana keno (alla kathe grammi exei mono ena topic==Mathima
-                String[] rowArray = row.split(" ");
-                topicName = rowArray[0];
-                Topic topic = new Topic(topicName);
-                boolean existingTopic= false;
-                if(!topicsList.isEmpty()){
-                    for(Topic t : topicsList){
-                        if(t.getChannelName().equals(topicName) ){
-                            existingTopic = true;
-                            break;
-                        }
-                    }       //an den yparxei hdh sth lista, prosthese to twra
-                    if(existingTopic == false){
-                        topicsList.add(topic);
-                    }
-                }
-                else {  //an ayto einai to prwto topic pou tha mpei sth lista
-                    topicsList.add(topic);
-                }
-                //edw an theloume mporoume na vazoume ta files pou exoun perasei
-                //logika den xreiazetai
-            }
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+    public List<Broker> getAllBrokers(){
+        return this.allBrokers;
     }
+    public void setTopicQueue(HashMap<Topic,ArrayList<Queue<Value>>> tq){
+        this.topicsQueue = tq;
+    }
+    public void setHash(long longInput){
+        this.hashBroker = longInput;
+    }
+    public Long getHash() {
+        return this.hashBroker;
+    }
+
+
 
     //den xreiazetai setter, ta pairnei dynamika otan diavazoume ta topics apo to arxeio
 

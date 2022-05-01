@@ -76,7 +76,7 @@ public class Broker extends Thread {
     }
 
     public String getIp() {
-        return ip;
+        return this.ip;
     }
 
     public void setIp(String ip) {
@@ -84,7 +84,7 @@ public class Broker extends Thread {
     }
 
     public int getPort() {
-        return port;
+        return this.port;
     }
 
     public void setPort(int port) {
@@ -179,38 +179,42 @@ public class Broker extends Thread {
         //calculate each of the Brokers hash value
         Publisher p = new Publisher();
         hashOfBrokers();
-        //calculate TopicsHash
         HashMap<String, Long> topicHashes = calculateTopicHash();
         List<Topic> copyTopics = new ArrayList<>();
-        //getTopicsList
-        for(Topic t: p.getpubTopicList()){
+        for (Topic t: p.getpubTopicList()){
             copyTopics.add(t);
         }
         //compare topic hashes and broker hash value
         if (!topicHashes.isEmpty()) {
             ArrayList<Long> allBrokHash = allBrokerHash();
-            if(allBrokHash!=null) {
+            if (allBrokHash!=null) {
                 //iterate the list of the values of the brokers' hash
-                for (int i=0;i<allBrokHash.size();i++) {
+                for (int i=0; i<allBrokHash.size(); i++) {
+                    // gia kathe apo ta topic pou yparxoun sth lista me ta topics tou publisher
                     for (Topic t : p.getpubTopicList()) {
-                        if(copyTopics.indexOf(t)>-1){
+                        if(copyTopics.contains(t)){
+                            // pare apo thn topicHashes lista, ayto to object pou antistoixei sto ekastote topic
                             long h = topicHashes.get(t.getChannelName());
-                            int s = allBrokHash.size()-1;
+                            // take the number of elements of the list minus 1 (-1)
+                            int s = allBrokHash.size() - 1;
 
-                            if(i==0){
-                                if((h<allBrokHash.get(i))||(h>=allBrokHash.get(s))){
-                                    for(Broker b: getAllBrokers()) {
-                                        if(b.getHash()==allBrokHash.get(i)){
+                            if (i==0) { //first iteration
+                                //if h is smaller than broker1 or bigger than the last broker
+                                if ( (h < allBrokHash.get(i)) || (h >= allBrokHash.get(s)) ){
+                                    for (Broker b: getAllBrokers()) {
+                                        if (b.getHash() == allBrokHash.get(i)){
                                             b.relatedTopics.add(t);
                                             int index=copyTopics.indexOf(t);
+                                            //remove from copyTopics list the one that have just been added to broker
                                             copyTopics.remove(index);
                                         }
                                     }
                                 }
                             }
-                            else if (h<allBrokHash.get(i) && h >= allBrokHash.get(i-1)){
-                                for(Broker b: getAllBrokers()) {
-                                    if(b.getHash()==allBrokHash.get(i)){
+                            //i.e: if h is smaller than broker3 and bigger than broker2, put it in broker3 (i)
+                            else if ( h < allBrokHash.get(i) && h >= allBrokHash.get(i-1)){
+                                for (Broker b: getAllBrokers()) {
+                                    if (b.getHash() == allBrokHash.get(i)){
                                         b.relatedTopics.add(t);
                                         int index=copyTopics.indexOf(t);
                                         copyTopics.remove(index);
@@ -227,18 +231,19 @@ public class Broker extends Thread {
         }
         for(Broker b: getAllBrokers()){
             //System.out.println(b.getName()+" "+b.getHash());
-            HashMap<Topic,ArrayList<Queue<Value>>> q = new HashMap<>();
+            HashMap<Topic,ArrayList<Queue<Value>>> qPair = new HashMap<>();
+            // gia kathe broker, pare ola ta related topic tou kai valta se mia queue
+            //etsi wste h qPair na exei ta topics tou kathe broker
             for(Topic t : b.getRelatedTopics()){
-                //System.out.println(t.getBusLine());
                 ArrayList<Queue<Value>> val = new ArrayList<>();;
-                q.put(t,val);
+                qPair.put(t,val);
             }
-            b.setTopicQueue(q);
+            b.setTopicQueue(qPair);
         }
     }
 
 
-    //returns list of brokers' hash
+    //returns sorted list of brokers' hash value
     private ArrayList<Long> allBrokerHash() {
         ArrayList<Long> allBrokHash = new ArrayList<>();
         if(!getAllBrokers().isEmpty()) {
@@ -254,37 +259,66 @@ public class Broker extends Thread {
     }
 
 
-
-
-
+    // hashCode calculates the hash value of the string input (of the topic name)
     private Long hashCode(String input) throws NoSuchAlgorithmException {
-        //The Java MessageDigest class represents a cryptographic hash function which
-        //can calculate a message digest from binary data.
-        //Values returned by a hash function are called message digest, or hash values
-        //xrhsimopoioume thn MD5 methodo
         MessageDigest md = MessageDigest.getInstance("MD5");
-
-			/*
-			// getting the status of MessageDigest object
-            String str = md.toString();
-			//print status: Status : MD5 Message Digest from SUN, <initialized>
-			*/
-
-        // digest() calculates message digest
-        //  of an input digest() return array of byte
-        //pairneis se pinaka apo theseis byte, to input string
-        //GENIKA, to messageDigest pairnei to input ws pinaka apo byte kai  epistrefei ena MD5 hash instance
+        /* 1. Dhmiourgoume ena object typou MessageDigest me ton typo tou algorithmou
+            ths hash synarthshs pou theloume na ylopoihsoume
+            2. meta mesw aytou tou antikeimenou( md) vazoume se ena byte array
+                thn hashed timh tou input pou exoume dwsei
+            3. telow metatrepoume to byte array se arithmo typou BigInteger
+            4. Telos kanoume thn telikh metatropi thw hash timhs, se long typo.
+        * */
         byte[] messageDigest = md.digest(input.getBytes());
-
         // Convert byte array into signum representation
-        //Translates the sign-magnitude representation of a BigInteger into a BigInteger (signed to big integer)
-        //signum - signum of the number (-1 for negative, 0 for zero, 1 for positive).
-        //magnitude - big-endian binary representation of the magnitude of the number.
         BigInteger no = new BigInteger(1, messageDigest);
-        //return Math.abs(no.longValue());
         //convert BigInteger to long and return it
-        // longValue() returns the value of this Long object as a long after the conversion.
         return no.longValue();
+    }
+
+
+    //get all the topics and calculate a hash value for each topic and put them inside topicHashes list and return
+    private HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
+        List<Topic> topics = getRelatedTopics();
+        HashMap<String, Long> topicHashes = new HashMap<>();
+        for (Topic t : topics) {
+            long h = hashCode(t.getChannelName());
+            //put inside topicHashes queue the name and corresponding hash value of each topic
+            topicHashes.put(t.getChannelName(), h);
+        }
+        return topicHashes;
+    }
+
+    private void hashOfBrokers() throws NoSuchAlgorithmException {
+        //brokers is a list of all available brokers
+        List<Broker> brokers = getAllBrokers();
+        //iterate the list of brokers
+        for (Broker br : brokers) {
+            //String input= this.getIp()+" "+Integer.toString(this.getPort());
+            //foreach broker found in the list, split its ip string value and return it inside "parts" array
+            //kathe thesi tou pinaka xwrizetai apo ta kommatia pou kathorizontai apo to regex (escape ".")
+            // this split splits ip number and creates the string array: {192, 168, 10, 23}
+            String[] parts = br.getIp().split("\\.");
+
+           // ITS WORKING PROPERLY (merges the parts string array into one string)
+            // StringBuilder is a method that allows appending string representation of char array
+            //StringBuilder sb = new StringBuilder("");
+            String result = "";
+            for (int j = 0; j < parts.length; j++) {
+                result = result + parts[j];
+            }   // result = 1921681025 (string)
+            int ipPlusPort = Integer.parseInt(result) + br.getPort();
+            String strIpPlusPort = Integer.toString(ipPlusPort);
+            //an h ip tou broker pou ektelei thn parousa synarthsh einai h idia me thn ip apo thn synoliki lista twn
+            //brokers, epishs an tautoxrona to port tou parontos broker einai to idio me ayto pou eksetazetai, tote vale
+            //ws hash timh aytou touu broker to apotelesma tou hash pou tha vgalei h synarthsh me to sygkekrimeno input
+            if ((this.getIp().equals(br.getIp())) && (this.getPort() == br.getPort())) {
+                this.hashBroker = hashCode(strIpPlusPort);
+            } else {
+                //alliws vale ston broker pou exoume ayth th stigmh sto iteration, to apotelesma tou hash code tou input
+                br.setHash(hashCode(strIpPlusPort));
+            }
+        }
     }
 
     /*
@@ -315,53 +349,7 @@ public class Broker extends Thread {
             }
             }
     */
-    //get all the topics and calculate a hash value for each topic and put them inside topicHashes list and return
-    private HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
-        List<Topic> topics = getRelatedTopics();
-        HashMap<String, Long> topicHashes = new HashMap<>();
-        for (Topic t : topics) {
-            long h = hashCode(t.getChannelName());
-            topicHashes.put(t.getChannelName(), h);
-        }
-        return topicHashes;
-    }
 
-    private void hashOfBrokers() throws NoSuchAlgorithmException {
-        //brokers is a list of all available brokers
-        List<Broker> brokers = getAllBrokers();
-        //iterate the list of brokers
-        for (Broker br : brokers) {
-            //String input= this.getIp()+" "+Integer.toString(this.getPort());
-            //foreach broker found in the list, split its ip string value and return it inside "parts" array
-            //kathe thesi tou pinaka xwrizetai apo ta kommatia pou kathorizontai apo to regular expression
-            String[] parts = br.getIp().split("\\.");
-            String i="";
-            //iterate the array that has just been generated, that includes the ip parts of the whole ip of specific broker
-            //adds to string "i" the value of the positions of parts array, so a big string consisted of the whole ip of
-            //the specific broker is generated
-            for (int j = 0; j < parts.length; j++) {
-                if(j==0)
-                    i=parts[j];
-                else
-                    i=i + parts[j];
-            }
-            // i = sum of the characters of the ip, for ex: ip = 192.168.10.23 => i=1921681023
-
-            //in is an integer that is the sum of the i (converted to integer) and the port of that broker
-            int in = Integer.parseInt(i) + br.getPort();
-            String input = Integer.toString(in);
-            //an h ip tou broker pou ektelei thn parousa synarthsh einai h idia me thn ip apo thn synoliki lista twn
-            //brokers, epishs an tautoxrona to port tou parontos broker einai to idio me ayto pou eksetazetai, tote vale
-            //ws hash timh aytou touu broker to apotelesma tou hash pou tha vgalei h synarthsh me to sygkekrimeno input
-            if ((this.getIp().equals(br.getIp())) && (this.getPort() == br.getPort())) {
-                this.hashBroker = hashCode(input);
-
-            } else {
-                //alliws vale ston broker pou exoume ayth th stigmh sto iteration, to apotelesma tou hash code tou input
-                br.setHash(hashCode(input));
-            }
-        }
-    }
     public List<Broker> getAllBrokers(){
         return this.allBrokers;
     }

@@ -107,6 +107,45 @@ public class Node implements Runnable{
         return lTPub;
     }
 
+    //ok
+    public void readtopicsList(){
+        FileReader fReader;
+        BufferedReader buffReader;
+        String row;
+        String topicName;
+
+        try{
+            fReader = new FileReader(topicsPath);
+            buffReader = new BufferedReader(fReader);
+
+            while( (row = buffReader.readLine() ) != null) {
+                //xwrise thn grammh ana keno (alla kathe grammi exei mono ena topic==Mathima
+                String[] rowArray = row.split(" ");
+                topicName = rowArray[0];
+                Topic topic = new Topic(topicName);
+                boolean existingTopic= false;
+                if(!topicsList.isEmpty()){
+                    for(Topic t : topicsList){
+                        if(t.getChannelName().equals(topicName) ){
+                            existingTopic = true;
+                            break;
+                        }
+                    }       //an den yparxei hdh sth lista, prosthese to twra
+                    if(existingTopic == false){
+                        topicsList.add(topic);
+                    }
+                }
+                else {  //an ayto einai to prwto topic pou tha mpei sth lista
+                    topicsList.add(topic);
+                }
+                //edw an theloume mporoume na vazoume ta files pou exoun perasei
+                //logika den xreiazetai
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     public ArrayList<Topic> getTopicsList(){
         return this.topicsList;
@@ -146,7 +185,6 @@ TRASH CODE
                 }
             };
             Thread serverThreadSub = new Thread(receiverLoopSubs);
-
             serverThreadSub.start();
         } catch (IOException e){
             e.printStackTrace();
@@ -161,7 +199,6 @@ TRASH CODE
                         Publisher.PublisherHandler handler = new Publisher.PublisherHandler(s);
                         // Create a new Thread with this object.
                         Thread t = new Thread(handler);
-
                         // start the thread.
                         t.start();
                     } catch (IOException e) {
@@ -170,12 +207,10 @@ TRASH CODE
                 }
             };
             Thread serverThreadPub = new Thread(receiverLoopPubs);
-
             serverThreadPub.start();
         } catch (IOException e) {
             System.err.println("Failed to initialize publisher at port " + port+1 + ": " + e.getMessage());
         }
-
         try {
             ServerSocket serverSocket = new ServerSocket(port + 2);
             Runnable receiverLoopBroker = () -> {
@@ -192,7 +227,6 @@ TRASH CODE
                 }
             };
             Thread serverThreadBroker = new Thread(receiverLoopBroker);
-
             serverThreadBroker.start();
         } catch (IOException e) {
             System.err.println("Failed to initialize broker at port " + port+2 + ": " + e.getMessage());

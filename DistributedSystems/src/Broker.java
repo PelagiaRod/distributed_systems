@@ -273,37 +273,34 @@ public class Broker extends Thread {
         //convert BigInteger to long and return it
         return no.longValue();
     }
-/*
-        void pull(String brokerName) {
-
-        try {
-        while(true) {
-        Socket client = serverSocket.accept();
-        System.out.println("Publisher is connected!");
-        //serverSocket = new ServerSocket(4321);
-        BrokerHandler handler = new BrokerHandler(client);
-        //handler.run();
-        Thread thread = new Thread(handler);
-        thread.start();
-        }
-        } catch (IOException e){
-        closeBroker();
-        //e.printStackTrace();
-        }
-
-        }
-
-public void closeBroker(){
-        try{
-        if(serverSocket != null)
-        {
-        serverSocket.close();
-        }
-        }catch (IOException e){
-        e.printStackTrace();
-        }
-        }
-*/
+    /*
+            void pull(String brokerName) {
+            try {
+            while(true) {
+            Socket client = serverSocket.accept();
+            System.out.println("Publisher is connected!");
+            //serverSocket = new ServerSocket(4321);
+            BrokerHandler handler = new BrokerHandler(client);
+            //handler.run();
+            Thread thread = new Thread(handler);
+            thread.start();
+            }
+            } catch (IOException e){
+            closeBroker();
+            //e.printStackTrace();
+            }
+            }
+    public void closeBroker(){
+            try{
+            if(serverSocket != null)
+            {
+            serverSocket.close();
+            }
+            }catch (IOException e){
+            e.printStackTrace();
+            }
+            }
+    */
     //get all the topics and calculate a hash value for each topic and put them inside topicHashes list and return
     private HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
         List<Topic> topics = getTopicsList();
@@ -393,18 +390,18 @@ public void closeBroker(){
 
     //den xreiazetai setter, ta pairnei dynamika otan diavazoume ta topics apo to arxeio
 
-/*
-    public void setTopicQueue(HashMap<Topic,ArrayList<Queue<Value>>> tq){
-        this.topicsQueue = tq;
-    }
-    public HashMap<Topic,ArrayList<Queue<Value>>> getQueueOfTopics(){
-        return this.topicsQueue;
-    }
-    public List<Broker> getAllBrokers(){
-        return this.topicsQueue;
-    }
-*/
-	void pull(String brokerName) {
+    /*
+        public void setTopicQueue(HashMap<Topic,ArrayList<Queue<Value>>> tq){
+            this.topicsQueue = tq;
+        }
+        public HashMap<Topic,ArrayList<Queue<Value>>> getQueueOfTopics(){
+            return this.topicsQueue;
+        }
+        public List<Broker> getAllBrokers(){
+            return this.topicsQueue;
+        }
+    */
+    void pull(String brokerName) {
 
         try {
             while(true) {
@@ -453,34 +450,34 @@ public void closeBroker(){
         @Override
         public void run() {
             //while (client.isConnected()) {
-                try {
-                    DataInputStream dataInputStream = new DataInputStream(client.getInputStream());
+            try {
+                DataInputStream dataInputStream = new DataInputStream(client.getInputStream());
 
-                    int fileNameLength = dataInputStream.readInt();
+                int fileNameLength = dataInputStream.readInt();
 
-                    if (fileNameLength > 0) {
-                        byte[] fileNameBytes = new byte[fileNameLength];
-                        dataInputStream.readFully(fileNameBytes, 0, fileNameBytes.length);
-                        String fileName = new String(fileNameBytes);
+                if (fileNameLength > 0) {
+                    byte[] fileNameBytes = new byte[fileNameLength];
+                    dataInputStream.readFully(fileNameBytes, 0, fileNameBytes.length);
+                    String fileName = new String(fileNameBytes);
 
-                        int fileContentLength = dataInputStream.readInt();
+                    int fileContentLength = dataInputStream.readInt();
 
-                        if (fileContentLength > 0) {
-                            byte[] fileContentBytes = new byte[fileContentLength];
-                            dataInputStream.readFully(fileContentBytes, 0, fileContentLength);
-                            File fileToDownload = new File("C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\mediaFile\\Red_Kitten_01.jpg");
-                            try{
-                                FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
-                                fileOutputStream.write(fileContentBytes);
-                                fileOutputStream.close();
-                            }catch(IOException error){
-                                error.printStackTrace();
-                            }
+                    if (fileContentLength > 0) {
+                        byte[] fileContentBytes = new byte[fileContentLength];
+                        dataInputStream.readFully(fileContentBytes, 0, fileContentLength);
+                        File fileToDownload = new File("C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\mediaFile\\Red_Kitten_01.jpg");
+                        try{
+                            FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
+                            fileOutputStream.write(fileContentBytes);
+                            fileOutputStream.close();
+                        }catch(IOException error){
+                            error.printStackTrace();
                         }
-
-
-                        System.out.println(fileName);
                     }
+
+
+                    System.out.println(fileName);
+                }
 
                 /*
                    SEND MESSAGES
@@ -490,11 +487,11 @@ public void closeBroker(){
                         System.out.println("Publisher data : " + str);
                         str = br.readLine();
                     }*/
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    //break;
-                }
-          //  }
+            } catch (IOException e) {
+                e.printStackTrace();
+                //break;
+            }
+            //  }
         }
     }
 }

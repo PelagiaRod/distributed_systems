@@ -104,7 +104,7 @@ public class Publisher implements Runnable {
                         for( Topic t : b.getRelatedTopics()) {
                             for(Queue<Value> q: queueOfTopics.get(t.getChannelName())){
                                 for(Value v : q){
-                                    push(t,v);
+                                    push(t.getChannelName(),v);
                                 }
                             }
 

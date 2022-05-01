@@ -23,6 +23,7 @@ public class Consumer implements Runnable {
     void disconnect(String topic){
         // unsibscribe
     }
+
     void register (String topic){
         //subscribe
     }

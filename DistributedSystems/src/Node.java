@@ -32,76 +32,7 @@ public class Node implements Runnable{
     }
 
     void init (int port){
-        System.out.println("It's UP waiting for new adventures");
-        try {
-            serverSocket = new ServerSocket(port);
-            Runnable receiverLoopSubs = () -> {
-                while (true) {
-                    try {
-                        Socket s = serverSocket.accept();
-                        Broker.BrokerHandler handler = new Broker.BrokerHandler(s);
-                        // Create a new Thread with this object.
-                        Thread t = new Thread(handler);
 
-                        // start the thread.
-                        t.start();
-                    } catch (IOException e) {
-                        return;
-                    }
-                }
-            };
-            serverThreadSub = new Thread(receiverLoopSubs);
-
-            serverThreadSub.start();
-        } catch (IOException e) {
-            System.err.println("Failed to initialize subscriber at port " + port + ": " + e.getMessage());
-        }
-
-        try {
-            serverSocket = new ServerSocket(port + 1);
-            Runnable receiverLoopPubs = () -> {
-                while (true) {
-                    try {
-                        Socket s = serverSocket.accept();
-                        Publisher.PublisherHandler handler = new Publisher.PublisherHandler(s);
-                        // Create a new Thread with this object.
-                        Thread t = new Thread(handler);
-
-                        // start the thread.
-                        t.start();
-                    } catch (IOException e) {
-                        return;
-                    }
-                }
-            };
-            serverThreadPub = new Thread(receiverLoopPubs);
-
-            serverThreadPub.start();
-        } catch (IOException e) {
-            System.err.println("Failed to initialize publisher at port " + port+1 + ": " + e.getMessage());
-        }
-
-        try {
-            serverSocket = new ServerSocket(port + 2);
-            Runnable receiverLoopBroker = () -> {
-                while (true) {
-                    try {
-                        Socket s = serverSocket.accept();
-                        Broker.BrokerHandler handler = new Broker.BrokerHandler(s);
-                        // Create a new Thread with this object.
-                        Thread t = new Thread(handler);
-                        t.start();
-                    } catch (IOException e) {
-                        return;
-                    }
-                }
-            };
-            serverThreadBroker = new Thread(receiverLoopBroker);
-
-            serverThreadBroker.start();
-        } catch (IOException e) {
-            System.err.println("Failed to initialize broker at port " + port+2 + ": " + e.getMessage());
-        }
     }
     void updateNodes(){
 

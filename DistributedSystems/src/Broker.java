@@ -31,7 +31,7 @@ public class Broker extends Thread {
     private HashMap<Topic,ArrayList<Queue<Value>>> topicsQueue;
     private static List<Consumer> allConsumers;
     private static List<Publisher> allPublishers;
-
+    private ServerSocket serverSocket;
 
 
 
@@ -51,6 +51,11 @@ public class Broker extends Thread {
         server.pull("Hello");
     }
 
+    public Broker(ServerSocket serverSocket)
+    {
+        this.serverSocket = serverSocket;
+    }
+
     public Broker(){
     }
 
@@ -66,18 +71,44 @@ public class Broker extends Thread {
         this.allConsumers = new ArrayList<>();
         init();
     }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
     public void init() {
         Node n = new Node();
         // n.readRouteCodes();
         this.allBrokers=n.loadBrokers();
         //setTopics(n);
         //setPubOwnTopics(this.name);
+        this.relatedTopics = n.getTopicsList();
         setTopicQueue(n);
         connectToBroker();
     }
 
-    public Broker(ServerSocket serverSocket)    {
-        this.serverSocket = serverSocket;
+    public List<Topic> getRelatedTopics(){
+        return this.relatedTopics;
+    }
+
+    void setTopicQueue(Node n){
+        //TODO: hashmap
+    }
+
+    private void connectToBroker() {
+        //TODO
     }
 
     public Broker(String topic){
@@ -135,12 +166,13 @@ public class Broker extends Thread {
     //The input to the hash function is of arbitrary length but output is always of fixed length.
     public void calculateKeys() throws NoSuchAlgorithmException {
         //calculate each of the Brokers hash value
+        Publisher p = new Publisher();
         hashOfBrokers();
         //calculate TopicsHash
         HashMap<String, Long> topicHashes = calculateTopicHash();
         List<Topic> copyTopics = new ArrayList<>();
         //getTopicsList
-        for(Topic t: getpubTopicList()){
+        for(Topic t: p.getpubTopicList()){
             copyTopics.add(t);
         }
         //compare topic hashes and broker hash value
@@ -149,7 +181,7 @@ public class Broker extends Thread {
             if(allBrokHash!=null) {
                 //iterate the list of the values of the brokers' hash
                 for (int i=0;i<allBrokHash.size();i++) {
-                    for (Topic t : getpubTopicList()) {
+                    for (Topic t : p.getpubTopicList()) {
                         if(copyTopics.indexOf(t)>-1){
                             long h = topicHashes.get(t.getChannelName());
                             int s = allBrokHash.size()-1;
@@ -241,9 +273,37 @@ public class Broker extends Thread {
         //convert BigInteger to long and return it
         return no.longValue();
     }
+/*
+        void pull(String brokerName) {
 
+        try {
+        while(true) {
+        Socket client = serverSocket.accept();
+        System.out.println("Publisher is connected!");
+        //serverSocket = new ServerSocket(4321);
+        BrokerHandler handler = new BrokerHandler(client);
+        //handler.run();
+        Thread thread = new Thread(handler);
+        thread.start();
+        }
+        } catch (IOException e){
+        closeBroker();
+        //e.printStackTrace();
+        }
 
+        }
 
+public void closeBroker(){
+        try{
+        if(serverSocket != null)
+        {
+        serverSocket.close();
+        }
+        }catch (IOException e){
+        e.printStackTrace();
+        }
+        }
+*/
     //get all the topics and calculate a hash value for each topic and put them inside topicHashes list and return
     private HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
         List<Topic> topics = getTopicsList();
@@ -333,7 +393,7 @@ public class Broker extends Thread {
 
     //den xreiazetai setter, ta pairnei dynamika otan diavazoume ta topics apo to arxeio
 
-
+/*
     public void setTopicQueue(HashMap<Topic,ArrayList<Queue<Value>>> tq){
         this.topicsQueue = tq;
     }
@@ -343,7 +403,7 @@ public class Broker extends Thread {
     public List<Broker> getAllBrokers(){
         return this.topicsQueue;
     }
-
+*/
 	void pull(String brokerName) {
 
         try {
@@ -373,6 +433,8 @@ public class Broker extends Thread {
             e.printStackTrace();
         }
     }
+
+
 
 
     static class BrokerHandler implements Runnable {

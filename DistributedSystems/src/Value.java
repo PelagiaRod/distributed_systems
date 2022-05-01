@@ -14,4 +14,5 @@ public class Value {
     public void setMultimediaFile(MultimediaFile multimediaFile) {
         this.multimediaFile = multimediaFile;
     }
+
 }

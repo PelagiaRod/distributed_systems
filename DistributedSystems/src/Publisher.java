@@ -11,6 +11,7 @@ public class Publisher implements Runnable {
     private InetAddress inetAddress;
     private byte[] buffer;
     private List<Topic> pubTopicList;
+    private List<Broker> connectedBrokers;
     private String ipAddress = "127.0.0.1"; //must be taken dynamically so hash code can work correctly
     private int port = 1234; //must be taken dynamically so hush code can work correctly
     private HashMap<ProfileName, Pair<String, Value>> queueOfTopics;
@@ -38,7 +39,8 @@ public class Publisher implements Runnable {
         return chunks;
     }
 
-    void getBrokerList() {
+    public List<Broker> getBrokerList(){
+        return this.connectedBrokers;
     }
 
     Broker hashTopic(String topic) {
@@ -63,7 +65,7 @@ public class Publisher implements Runnable {
 
     }
 
-   //synchronized method in order to avoid a race condition and
+    //synchronized method in order to avoid a race condition and
     // ALLOW only one thread to execute this block at any given time
     public synchronized void push(String topicName, Value multimediaFile) {
         try {
@@ -78,12 +80,10 @@ public class Publisher implements Runnable {
 
 
 
+
 /* open socket and create thread
-
-
          try {
             client = new Socket("127.0.0.1", 4321);
-
             PublisherHandler handler = new PublisherHandler(client);
             Thread t = new Thread(handler);
             t.start();
@@ -122,7 +122,6 @@ public class Publisher implements Runnable {
 
         }
     }
-
 
 
     private void setPubOwnTopics(String name) {
@@ -189,7 +188,6 @@ public class Publisher implements Runnable {
             /*  Sending messages
                 //out = new ObjectOutputStream(connection.getOutputStream());
                 //in = new ObjectInputStream(connection.getInputStream());
-
                 BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in));
                while (true)
                 {
@@ -208,18 +206,14 @@ might be useless
         try{
             //working TCP code
             Socket client = new Socket("127.0.0.1", 4321);
-
             String str = "Paul";
-
             OutputStreamWriter os = new OutputStreamWriter(client.getOutputStream());
             PrintWriter out = new PrintWriter(os);
             out.println(str);
             os.flush();
-
             PublisherHandler handler = new PublisherHandler(client);
             Thread t = new Thread(handler);
             t.start();
-
             //UDP code
            DatagramSocket ds = new DatagramSocket();
            MultimediaFile mf = new MultimediaFile();
@@ -227,24 +221,18 @@ might be useless
            InetAddress ia = InetAddress.getLocalHost();
            DatagramPacket dp = new DatagramPacket(b, b.length, ia, 4321);
            ds.send(dp);
-
            byte[] b1 = new byte[1024];
            DatagramPacket dp1 = new DatagramPacket(b, b.length);
            ds.receive(dp1);
-
            String str = new String(dp1.getData());
            System.out.println("result i: " + str);
-
            //for Server
             DatagramSocket datagramSocket = new DatagramSocket(4321);
-
             byte[] bt = new byte[1024];
-
             DatagramPacket dp2 = new DatagramPacket(bt, bt.length);
         } catch (IOException e){
             e.printStackTrace();
         }
-
                 /*
                 String messageToSend = scanner.nextLine();
                 buffer = messageToSend.getBytes();
@@ -252,7 +240,6 @@ might be useless
                 datagramSocket1.send(datagramPacket);
                 DatagramSocket datagramSocket1 = new DatagramSocket();
                 byte[] buffer1;
-
                 From PublisherHandler run()
                try{
                 DatagramSocket datagramSocket1 = new DatagramSocket();
@@ -268,13 +255,11 @@ might be useless
             } catch(IOException e){
                 e.printStackTrace();
             }
-
  */
 /* send text
         try {
             Socket clientSocket = new Socket("127.0.0.1", 4321);
             System.out.println("Hi there!");
-
             while (true) {
                 System.out.println("Enter your text: ");
                 Scanner sc = new Scanner(System.in);
@@ -287,7 +272,6 @@ might be useless
                 Thread t = new Thread(handler);
                 t.start();
             }
-
         } catch (IOException e) {
             e.printStackTrace();
             // break;

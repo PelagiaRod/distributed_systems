@@ -1,6 +1,7 @@
 import javafx.util.Pair;
 import java.io.*;
 import java.net.*;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 //User profile
@@ -15,15 +16,18 @@ public class Publisher implements Runnable {
     private String ipAddress = "127.0.0.1"; //must be taken dynamically so hash code can work correctly
     private int port = 1234; //must be taken dynamically so hush code can work correctly
     private HashMap<ProfileName, Pair<String, Value>> queueOfTopics;
+    private static File currDirectory = new File(new File("").getAbsolutePath());
 
 
 
+    /*
     public static void main(String[] args) throws SocketException {
         Publisher publisher = new Publisher(new ProfileName("Gigi"));
         publisher.push("Gigi", new Value());
     }
-
+*/
     public Publisher() {
+
     }
 
     public Publisher(ProfileName profileName) {
@@ -35,6 +39,7 @@ public class Publisher implements Runnable {
     }
 
     ArrayList<Value> generateChunks(MultimediaFile file) {
+        Value value = new Value(file);
         ArrayList<Value> chunks = new ArrayList<>();
         return chunks;
     }
@@ -43,18 +48,15 @@ public class Publisher implements Runnable {
         return this.connectedBrokers;
     }
 
-    Broker hashTopic(String topic) {
-        Node nd = new Node();
-        for(Broker broker : nd.brokers){
-            if (this.profileName.getUserVideoFilesMap().containsValue(topic));
-            {
-                return broker;
+    void hashTopic(String topic) {
+            Node nd = new Node();
+            //Broker broker = new Broker();
+            for (Broker brok : nd.brokers) {
+                if (this.profileName.getUserVideoFilesMap().containsValue(topic)) ;
+                {
+
+                }
             }
-        }
-        Broker broker = new Broker();
-        //key = IP+port % number of users?
-        //TODO: finish hash code
-        return broker;
     }
 
     void notifyBrokersNewMessage(String message) {
@@ -69,6 +71,15 @@ public class Publisher implements Runnable {
     // ALLOW only one thread to execute this block at any given time
     public synchronized void push(String topicName, Value multimediaFile) {
         try {
+            client = new Socket("127.0.0.1", 4321);
+            PublisherHandler handler = new PublisherHandler(client);
+            Thread t = new Thread(handler);
+            t.start();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        /*
+        try {
             ObjectOutputStream out = new ObjectOutputStream(client.getOutputStream());
             Pair<String, Value> pairObject = new Pair<>(topicName,multimediaFile);
             queueOfTopics.put(this.profileName, pairObject);
@@ -76,12 +87,9 @@ public class Publisher implements Runnable {
             out.flush();
         } catch (IOException ioException) {
             ioException.printStackTrace();
-        }
+        }*/
 
-
-
-
-/* open socket and create thread
+    /* open socket and create thread
          try {
             client = new Socket("127.0.0.1", 4321);
             PublisherHandler handler = new PublisherHandler(client);
@@ -94,19 +102,32 @@ public class Publisher implements Runnable {
     }
 
     public void send(Socket client){
+        String contents[] = currDirectory.list();
+        for(String name : contents){
+            System.out.println(name);
+        }
+        System.out.println("Write the name of the file you want to upload.");
+
+        Scanner in = new Scanner(System.in);
+        String fileName = in.nextLine();
+
+        Value value = new Value(new MultimediaFile(fileName));
+
+        push(fileName, value);
+
         while (true) {
             try {
                 ObjectOutputStream stream = new ObjectOutputStream(client.getOutputStream());
                 int port=client.getPort();
                 String ip = client.getInetAddress().getHostAddress();
                 for(Broker b: connectedBrokers) {
-                    if(b.getIp().equals(ip)&&b.getPort()==port) {
-                        for( Topic t : b.getRelatedTopics()) {
-                            for(Queue<Value> q: queueOfTopics.get(t.getChannelName())){
-                                for(Value v : q){
-                                    push(t.getChannelName(),v);
-                                }
-                            }
+                    if (b.getIp().equals(ip) && b.getPort() == port) {
+                        for (Topic t : b.getRelatedTopics()) {
+                            //for (Queue<Value> q : queueOfTopics.get(t.getChannelName())) {
+                               // for (Value v : q) {
+                                    push(t.getChannelName(), new Value(new MultimediaFile(t.getChannelName())));
+                              //  }
+                           // }
 
                         }
                     }
@@ -123,7 +144,7 @@ public class Publisher implements Runnable {
         }
     }
 
-
+/*
     private void setPubOwnTopics(String name) {
         Node n = new Node();
         ArrayList<String> tmp=n.readPublisherTopics(name);
@@ -138,7 +159,7 @@ public class Publisher implements Runnable {
         }
     }
 
-
+*/
     public List<Topic> getpubTopicList(){
         return this.pubTopicList;
 
@@ -146,10 +167,8 @@ public class Publisher implements Runnable {
 
     //create func in broker to read topics and create pubTopicList from this
     public void setpubTopicList(Node n){
-        this.pubTopicList= n.getTopicsList();
+        this.pubTopicList= n.readTopicsList();
     }
-
-
 
 
     public static class PublisherHandler implements Runnable {
@@ -201,78 +220,3 @@ public class Publisher implements Runnable {
 
     }
 }
-/* TRASH CODE
-might be useless
-        try{
-            //working TCP code
-            Socket client = new Socket("127.0.0.1", 4321);
-            String str = "Paul";
-            OutputStreamWriter os = new OutputStreamWriter(client.getOutputStream());
-            PrintWriter out = new PrintWriter(os);
-            out.println(str);
-            os.flush();
-            PublisherHandler handler = new PublisherHandler(client);
-            Thread t = new Thread(handler);
-            t.start();
-            //UDP code
-           DatagramSocket ds = new DatagramSocket();
-           MultimediaFile mf = new MultimediaFile();
-           byte[] b = mf.getMultimediaFileChunk();
-           InetAddress ia = InetAddress.getLocalHost();
-           DatagramPacket dp = new DatagramPacket(b, b.length, ia, 4321);
-           ds.send(dp);
-           byte[] b1 = new byte[1024];
-           DatagramPacket dp1 = new DatagramPacket(b, b.length);
-           ds.receive(dp1);
-           String str = new String(dp1.getData());
-           System.out.println("result i: " + str);
-           //for Server
-            DatagramSocket datagramSocket = new DatagramSocket(4321);
-            byte[] bt = new byte[1024];
-            DatagramPacket dp2 = new DatagramPacket(bt, bt.length);
-        } catch (IOException e){
-            e.printStackTrace();
-        }
-                /*
-                String messageToSend = scanner.nextLine();
-                buffer = messageToSend.getBytes();
-                DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length, InetAddress.getLocalHost(), 1234);
-                datagramSocket1.send(datagramPacket);
-                DatagramSocket datagramSocket1 = new DatagramSocket();
-                byte[] buffer1;
-                From PublisherHandler run()
-               try{
-                DatagramSocket datagramSocket1 = new DatagramSocket();
-                byte[] buffer1;
-                Scanner scanner = new Scanner(System.in);
-                String messageToSend = scanner.nextLine();
-                buffer1 = messageToSend.getBytes();
-                DatagramPacket datagramPacket = new DatagramPacket(buffer1, buffer1.length, InetAddress.getLocalHost(), 1234);
-                datagramSocket1.send(datagramPacket);
-                //datagramSocket1.receive(datagramPacket);
-                //String messageFromServer = new String(datagramPacket.getData(), 0, datagramPacket.getLength());
-                //System.out.println("The server says : " + messageFromServer);
-            } catch(IOException e){
-                e.printStackTrace();
-            }
- */
-/* send text
-        try {
-            Socket clientSocket = new Socket("127.0.0.1", 4321);
-            System.out.println("Hi there!");
-            while (true) {
-                System.out.println("Enter your text: ");
-                Scanner sc = new Scanner(System.in);
-                String str = sc.nextLine();
-                OutputStreamWriter os = new OutputStreamWriter(clientSocket.getOutputStream());
-                PrintWriter out = new PrintWriter(os);
-                out.println(str);
-                os.flush();
-                PublisherHandler handler = new PublisherHandler(clientSocket);
-                Thread t = new Thread(handler);
-                t.start();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            // break;
-        }*/

@@ -11,6 +11,10 @@ public class MultimediaFile {
 
     public MultimediaFile(){}
 
+    public MultimediaFile(String multimediaFileName){
+        this.multimediaFileName = multimediaFileName;
+    }
+
     public String getMultimediaFileName() {
         return multimediaFileName;
     }

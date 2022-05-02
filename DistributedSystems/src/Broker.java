@@ -8,23 +8,20 @@ import java.security.MessageDigest;
 import java.util.Collections;
 import java.util.HashMap;
 import java.math.BigInteger;
-import java.io.*;
-
-
 
 public class Broker extends Thread {
     //push(topic,value) -> [broker]
     //pull(topic,[broker]) -> [topic,value]
 
-    List<Consumer> registeredUsers;
-    List<Publisher> registeredPublishers;
+    List<Consumer> registeredUsers = new ArrayList<>();
+    List<Publisher> registeredPublishers = new ArrayList<>();
     private DatagramSocket datagramSocket;
     private byte[] buffer = new byte[256];
     String topic;
 
     //brokers list must be static because they are the same, no matter the instance
     private static List<Broker> allBrokers;
-    private String name, ip;
+    private String brokerName, ip;
     private int port;
     private long hashBroker; // == hashBroker
     private List<Consumer> registeredConsumers;
@@ -34,26 +31,16 @@ public class Broker extends Thread {
     private static List<Publisher> allPublishers;
     private ServerSocket serverSocket;
     private HashMap<Topic,ArrayList<Queue<Value>>> queueOfTopics;	//==topicsQueue
+    Socket client;
 
 
-
-
-    /* moved in Node
-    private static File currDirectory = new File(new File(".").getAbsolutePath());
-    private static String currDirectoryPath = currDirectory.getAbsolutePath().substring(0,currDirectory.getAbsolutePath().length() - 1);
-    private static String homePath = currDirectory + "Database\\";
-    private static String brokers = homePath + "Brokers.txt";
-    private static String topicsPath = homePath + "Topics.txt";
-    private  ArrayList<Topic> topicsList= new ArrayList<>();
-    private  ArrayList<Broker> brokersList= new ArrayList<>();
-    */
-
+/*
     public static void main(String args[]) throws IOException {
         ServerSocket serverSocket = new ServerSocket(4321);
         Broker server = new Broker(serverSocket);
         server.pull("Hello");
     }
-
+*/
     public Broker(ServerSocket serverSocket)
     {
         this.serverSocket = serverSocket;
@@ -62,8 +49,8 @@ public class Broker extends Thread {
     public Broker(){
     }
 
-    public Broker(String name, String ip, int port) {
-        this.name = name;
+    public Broker(String brokerName, String ip, int port) {
+        this.brokerName = brokerName;
         this.ip = ip;
         this.port = port;
         this.registeredPublishers = new ArrayList<>();
@@ -72,7 +59,7 @@ public class Broker extends Thread {
         this.topicsQueue = new HashMap<>();
         this.allPublishers = new ArrayList<>();
         this.allConsumers = new ArrayList<>();
-        init();
+        //init();
     }
 
     public String getIp() {
@@ -90,22 +77,33 @@ public class Broker extends Thread {
     public void setPort(int port) {
         this.port = port;
     }
+
+    public String getBrokerName() {
+        return brokerName;
+    }
+
+    public void setBrokerName(String brokerName) {
+        this.brokerName = brokerName;
+    }
+
     public void setQueueOfTopics(HashMap<Topic,ArrayList<Queue<Value>>> q){
         this.queueOfTopics = q;
     }
+
     public HashMap<Topic,ArrayList<Queue<Value>>> getQueueOfTopics(){
         return this.queueOfTopics;
     }
 
 
-    public void init() {
+    public void init() throws NoSuchAlgorithmException {
         Node n = new Node();
         // n.readRouteCodes();
         this.allBrokers=n.loadBrokers();
         //dhmiourgei lista me ta topics kai arxikopoiei ta related topics
-        n.readtopicsList();
-        this.relatedTopics = n.getTopicsList();
+        n.readTopicsList();
+        this.relatedTopics = n.readTopicsList();
         //setPubOwnTopics(this.name);
+        //calculateKeys();
         setTopicQueue(n);
         connectToBroker();
     }
@@ -118,7 +116,7 @@ public class Broker extends Thread {
         //TODO: hashmap
     }
 
-    private void connectToBroker() {
+    void  connectToBroker() {
         //TODO
     }
 
@@ -158,7 +156,12 @@ public class Broker extends Thread {
     Publisher acceptConnection(Publisher publisher){
         for (Publisher registeredPublisher : registeredPublishers){
             if (registeredPublisher == publisher){
-                //connect
+                try {
+                    client = serverSocket.accept();
+                    System.out.println("Publisher is connected!");
+                } catch (IOException e){
+                    e.printStackTrace();
+                }
             }
         }
         registeredPublishers.add(publisher);
@@ -235,7 +238,7 @@ public class Broker extends Thread {
             // gia kathe broker, pare ola ta related topic tou kai valta se mia queue
             //etsi wste h qPair na exei ta topics tou kathe broker
             for(Topic t : b.getRelatedTopics()){
-                ArrayList<Queue<Value>> val = new ArrayList<>();;
+                ArrayList<Queue<Value>> val = new ArrayList<>();
                 qPair.put(t,val);
             }
             b.setTopicQueue(qPair);
@@ -300,7 +303,7 @@ public class Broker extends Thread {
             // this split splits ip number and creates the string array: {192, 168, 10, 23}
             String[] parts = br.getIp().split("\\.");
 
-           // ITS WORKING PROPERLY (merges the parts string array into one string)
+            // ITS WORKING PROPERLY (merges the parts string array into one string)
             // StringBuilder is a method that allows appending string representation of char array
             //StringBuilder sb = new StringBuilder("");
             String result = "";
@@ -311,7 +314,7 @@ public class Broker extends Thread {
             String strIpPlusPort = Integer.toString(ipPlusPort);
             //an h ip tou broker pou ektelei thn parousa synarthsh einai h idia me thn ip apo thn synoliki lista twn
             //brokers, epishs an tautoxrona to port tou parontos broker einai to idio me ayto pou eksetazetai, tote vale
-            //ws hash timh aytou touu broker to apotelesma tou hash pou tha vgalei h synarthsh me to sygkekrimeno input
+            //ws hash timh aytou tou broker to apotelesma tou hash pou tha vgalei h synarthsh me to sygkekrimeno input
             if ((this.getIp().equals(br.getIp())) && (this.getPort() == br.getPort())) {
                 this.hashBroker = hashCode(strIpPlusPort);
             } else {
@@ -353,12 +356,15 @@ public class Broker extends Thread {
     public List<Broker> getAllBrokers(){
         return this.allBrokers;
     }
+
     public void setTopicQueue(HashMap<Topic,ArrayList<Queue<Value>>> tq){
         this.topicsQueue = tq;
     }
+
     public void setHash(long longInput){
         this.hashBroker = longInput;
     }
+
     public Long getHash() {
         return this.hashBroker;
     }
@@ -382,9 +388,7 @@ public class Broker extends Thread {
 
         try {
             while(true) {
-                Socket client = serverSocket.accept();
-                System.out.println("Publisher is connected!");
-                //serverSocket = new ServerSocket(4321);
+                serverSocket = new ServerSocket(4321);
                 BrokerHandler handler = new BrokerHandler(client);
                 //handler.run();
                 Thread thread = new Thread(handler);

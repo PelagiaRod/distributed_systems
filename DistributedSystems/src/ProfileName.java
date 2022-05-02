@@ -12,6 +12,8 @@ public class ProfileName {
     public ProfileName(String profileName)
     {
         this.profileName = profileName;
+        userVideoFilesMap = new HashMap<>();
+        subscribedConversations = new HashMap<>();
     }
 
     public ProfileName(String profileName, HashMap<String, ArrayList<Value>> userVideoFilesMap, HashMap<String, Integer> subscribedConversations){

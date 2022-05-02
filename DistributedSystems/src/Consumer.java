@@ -4,10 +4,6 @@ import java.net.Socket;
 public class Consumer implements Runnable {
     ProfileName subscriber;
 
-    public static void main(String[] args)
-    {
-    }
-
     public Consumer() {
     }
 

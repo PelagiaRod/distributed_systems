@@ -4,6 +4,8 @@ import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
+import helpers.FileHelper;
+
 public class Node {
 
     static List<Broker> brokers = new ArrayList<>();
@@ -17,51 +19,50 @@ public class Node {
     String brokerName;
 
     private static File currDirectory = new File(new File("").getAbsolutePath());
-    private static String topicsPath = currDirectory + "\\Topics.txt";
+    private static String topicsPath = currDirectory + "\\data\\Topics.txt";
+    private static String brokersPath = currDirectory + "\\data\\Brokers.txt";
+    private static String publishersPath = currDirectory + "\\data\\Publishers.txt";
 
-    public ArrayList<Topic> readTopicsList(){
-        ArrayList<Topic> listOfLines = new ArrayList<>();
-        try{
-            FileReader fReader = new FileReader(topicsPath);
-            BufferedReader buffReader = new BufferedReader(fReader);
-
-            String line = buffReader.readLine();
-            while (line != null) {
-                listOfLines.add(new Topic(line));
-                line = buffReader.readLine();
-            }
-            buffReader.close();
-
-        }catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+    public ArrayList<Topic> readTopicsList() {
+        ArrayList<Topic> topics = new ArrayList<>();
+        ArrayList<String> topicsLines = FileHelper.readFile(topicsPath);
+        for (String line : topicsLines) {
+            topics.add(new Topic(line));
         }
-        return listOfLines;
+        return topics;
     }
 
-    public  List<Broker> loadBrokers() throws NoSuchAlgorithmException {
-        brokers.add(new Broker("Broker1", "127.0.0.1", 4321));
-        brokers.add(new Broker("Broker2", "127.0.0.1", 4322));
-        brokers.add(new Broker("Broker3", "127.0.0.1", 4323));
+    public List<Broker> loadBrokers() {
+        ArrayList<String> brokersLines = FileHelper.readFile(brokersPath);
+        for (String line : brokersLines) {
+            String[] data = line.split(" , ");
+            brokers.add(new Broker(data[0], data[1], Integer.parseInt(data[2])));
+        }
+
         return brokers;
     }
 
-    void init(){
-        broker.registeredPublishers.add(new Publisher(new ProfileName("Gigi")));
-        broker.registeredPublishers.add(new Publisher(new ProfileName("Paul")));
+    private void addPublishers() {
+        ArrayList<String> publishersNames = FileHelper.readFile(publishersPath);
+        for (String publisherName : publishersNames) {
+            broker.registeredPublishers.add(new Publisher(new ProfileName(publisherName)));
+        }
+    }
+
+    private void init() {
+        addPublishers();
 
         System.out.println("Please enter your name:");
-        Scanner in = new Scanner(System.in);
-        String username = in.nextLine();
+        Scanner myUserName = new Scanner(System.in);
+        String username = myUserName.nextLine();
         Publisher publisher = new Publisher(new ProfileName(username));
         boolean flag = false;
-        if(broker.registeredPublishers == null){
+        if (broker.registeredPublishers == null) {
             System.out.println("Welcome " + username);
             broker.registeredPublishers.add(publisher);
         }
-        for (Publisher publ : broker.registeredPublishers){
-            if(publ.equals(publisher)){
+        for (Publisher publ : broker.registeredPublishers) {
+            if (publ.equals(publisher)) {
                 System.out.println("Welcome back " + username);
                 flag = true;
                 break;
@@ -74,32 +75,25 @@ public class Node {
 
         flag = false;
         System.out.println("Select a topic");
-        Scanner in1 = new Scanner(System.in);
-        subject = in1.nextLine();
+        Scanner myTopic = new Scanner(System.in);
+        subject = myTopic.nextLine();
         Node n = new Node();
         ArrayList<Topic> topics = n.readTopicsList();
-        for(Topic topic : topics){
-            if(topic.getChannelName().equals(subject)) {
-                flag = true;
-                checkIfSubscribed(username, subject);
-                uploadFile(username, subject);
-                break;
-            }
+        if (!topics.contains(new Topic(subject))) {
+            FileHelper.writeFile(topicsPath, subject);
+            topics.add(new Topic(subject));
         }
-        if (!flag){
-            System.out.println("Topic does not exist");
-            //TODO:ADD TOPIC
-        }
+        checkIfSubscribed(username, subject);
+        uploadFile(username, subject);
 
     }
 
-    void connect(){
+    void connect() {
         try {
             broker.init();
             broker.calculateKeys();
-            for (Broker br : broker.getAllBrokers())
-            {
-                if (br.getQueueOfTopics().containsValue(new Topic(subject))){
+            for (Broker br : broker.getAllBrokers()) {
+                if (br.getQueueOfTopics().containsValue(new Topic(subject))) {
                     ip = br.getIp();
                     port = br.getPort();
                     brokerName = br.getBrokerName();
@@ -117,30 +111,30 @@ public class Node {
             Thread t1 = new Thread(publ);
             t1.start();
 
-        } catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
     }
 
-    void checkIfSubscribed(String username, String subject){
+    void checkIfSubscribed(String username, String subject) {
         ProfileName user = new ProfileName(username);
 
         user.getSubscribedConversations().put("DATA_BASE", 1);
 
-        for(Map.Entry<String, Integer> entry : user.getSubscribedConversations().entrySet())
+        for (Map.Entry<String, Integer> entry : user.getSubscribedConversations().entrySet())
             num = entry.getValue();
-        if (user.getSubscribedConversations().containsValue(subject)){
+        if (user.getSubscribedConversations().containsValue(subject)) {
             System.out.println("User subscribed to " + subject);
         } else {
-            user.getSubscribedConversations().put(subject, num+1);
+            user.getSubscribedConversations().put(subject, num + 1);
             System.out.println("Welcome to the channel " + subject);
         }
 
     }
 
-    void uploadFile(String username, String subject){
+    void uploadFile(String username, String subject) {
         ProfileName pn = new ProfileName(username);
         Publisher publisher = new Publisher(pn);
 
@@ -157,33 +151,33 @@ public class Node {
 
             if (answer.equals("Yes")) {
                 connect();
-                publisher.send(new Socket(ip, port));     //(subject);
+                publisher.send(new Socket(ip, port)); // (subject);
                 disconnect();
             } else {
                 System.out.println("No problem!");
             }
-        }catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    void disconnect(){
+    void disconnect() {
         try {
             if (serverSocket != null) {
                 serverSocket.close();
             }
-        }catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public static void main(String[] args){
+    public static void main(String[] args) {
         Node n = new Node();
         ArrayList<Topic> topics = n.readTopicsList();
-        for(Topic topic : topics){
+        for (Topic topic : topics) {
             System.out.println(topic.getChannelName());
         }
-        //n.loadBrokers();
+        // n.loadBrokers();
         n.init();
     }
 }

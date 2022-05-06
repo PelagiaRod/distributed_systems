@@ -16,7 +16,7 @@ public final class FileHelper {
 
             String line = buffReader.readLine();
             while (line != null) {
-                txtLines.add(line);
+                txtLines.add(line.strip());
                 line = buffReader.readLine();
             }
             buffReader.close();

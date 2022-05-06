@@ -79,13 +79,20 @@ public class Node {
         subject = myTopic.nextLine();
         Node n = new Node();
         ArrayList<Topic> topics = n.readTopicsList();
-        if (!topics.contains(new Topic(subject))) {
+
+        for (Topic topic : topics) {
+            if (topic.getChannelName().equals(subject)) {
+                flag = true;
+                break;
+            }
+        }
+
+        if (!flag) {
             FileHelper.writeFile(topicsPath, subject);
             topics.add(new Topic(subject));
         }
         checkIfSubscribed(username, subject);
         uploadFile(username, subject);
-
     }
 
     void connect() {

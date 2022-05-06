@@ -1,5 +1,4 @@
 # distributed_systems
 
 ## ΕΚΦΩΝΗΣΗ ΕΡΓΑΣΙΑΣ 2022
-
-<embed src="docs/Project Distributed Systems 2022 - Εκφώνηση.pdf" type="application/pdf">
+[Εκφώνηση Εργασίας](docs/Project%20Distributed%20Systems.pdf "@embed")

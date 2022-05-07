@@ -46,7 +46,7 @@ public class Publisher implements Runnable {
     public List<Broker> getBrokerList() {
         return this.connectedBrokers;
     }
-
+    // TODO
     void hashTopic(String topic) {
         Node nd = new Node();
         // Broker broker = new Broker();
@@ -161,7 +161,7 @@ public class Publisher implements Runnable {
      * }
      * }
      * }
-     * 
+     *
      */
     public List<Topic> getpubTopicList() {
         return this.pubTopicList;

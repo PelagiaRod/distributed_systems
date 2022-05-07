@@ -8,116 +8,68 @@ import java.security.MessageDigest;
 import java.util.Collections;
 import java.util.HashMap;
 import java.math.BigInteger;
+import java.io.*;
+
+
 
 public class Broker extends Thread {
     //push(topic,value) -> [broker]
     //pull(topic,[broker]) -> [topic,value]
 
-    List<Consumer> registeredUsers = new ArrayList<>();
-    List<Publisher> registeredPublishers = new ArrayList<>();
+    List<Consumer> enrolledConsumers;
+    List<Publisher> enrolledPublishers;
     private DatagramSocket datagramSocket;
     private byte[] buffer = new byte[256];
     String topic;
 
     //brokers list must be static because they are the same, no matter the instance
     private static List<Broker> allBrokers;
-    private String brokerName, ip;
+    private String name, ip;
     private int port;
-    private long hashBroker; // == hashBroker
+    private long bHashValue;
+    ServerSocket serverSocket;
+    Socket client;
     private List<Consumer> registeredConsumers;
-    private List<Topic> relatedTopics;		//hashmap == queue
+    private List<Topic> linkedTopics;		//hashmap == queue
     private HashMap<Topic,ArrayList<Queue<Value>>> topicsQueue;
     private static List<Consumer> allConsumers;
     private static List<Publisher> allPublishers;
-    private ServerSocket serverSocket;
-    private HashMap<Topic,ArrayList<Queue<Value>>> queueOfTopics;	//==topicsQueue
-    Socket client;
 
 
-/*
     public static void main(String args[]) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(4321);
-        Broker server = new Broker(serverSocket);
+        ServerSocket sSocket = new ServerSocket(4321);
+        Broker server = new Broker(sSocket);
         server.pull("Hello");
-    }
-*/
-    public Broker(ServerSocket serverSocket)
-    {
-        this.serverSocket = serverSocket;
     }
 
     public Broker(){
     }
 
-    public Broker(String brokerName, String ip, int port) {
-        this.brokerName = brokerName;
+    public Broker(String name, String ip, int port) {
+        this.name = name;
         this.ip = ip;
         this.port = port;
-        this.registeredPublishers = new ArrayList<>();
-        this.registeredConsumers = new ArrayList<>();
-        this.relatedTopics = new ArrayList<>();
+        this.enrolledPublishers = new ArrayList<>();
+        this.enrolledConsumers = new ArrayList<>();
+        this.linkedTopics = new ArrayList<>();
         this.topicsQueue = new HashMap<>();
         this.allPublishers = new ArrayList<>();
         this.allConsumers = new ArrayList<>();
-        //init();
+        init();
     }
-
-    public String getIp() {
-        return this.ip;
-    }
-
-    public void setIp(String ip) {
-        this.ip = ip;
-    }
-
-    public int getPort() {
-        return this.port;
-    }
-
-    public void setPort(int port) {
-        this.port = port;
-    }
-
-    public String getBrokerName() {
-        return brokerName;
-    }
-
-    public void setBrokerName(String brokerName) {
-        this.brokerName = brokerName;
-    }
-
-    public void setQueueOfTopics(HashMap<Topic,ArrayList<Queue<Value>>> q){
-        this.queueOfTopics = q;
-    }
-
-    public HashMap<Topic,ArrayList<Queue<Value>>> getQueueOfTopics(){
-        return this.queueOfTopics;
-    }
-
-
-    public void init() throws NoSuchAlgorithmException {
+    public void init() {
         Node n = new Node();
         // n.readRouteCodes();
         this.allBrokers=n.loadBrokers();
-        //dhmiourgei lista me ta topics kai arxikopoiei ta related topics
-        n.readTopicsList();
-        this.relatedTopics = n.readTopicsList();
+        this.linkedTopics = n.gettopicsList();
+        //setTopics(n);
         //setPubOwnTopics(this.name);
-        //calculateKeys();
-        setTopicQueue(n);
+        //settopicsQueue(n);
         connectToBroker();
     }
 
-    public List<Topic> getRelatedTopics(){
-        return this.relatedTopics;
-    }
-
-    void setTopicQueue(Node n){
-        //TODO: hashmap
-    }
-
-    void  connectToBroker() {
-        //TODO
+    public Broker(ServerSocket serverSocket)    {
+        this.serverSocket = serverSocket;
     }
 
     public Broker(String topic){
@@ -128,9 +80,9 @@ public class Broker extends Thread {
         this.datagramSocket = datagramSocket;
     }
 
-    public Broker(List<Consumer> registeredUsers, List<Publisher> registeredPublishers){
-        this.registeredUsers = registeredUsers;
-        this.registeredPublishers = registeredPublishers;
+    public Broker(List<Consumer> enrolledConsumers, List<Publisher> enrolledPublishers){
+        this.enrolledConsumers = enrolledConsumers;
+        this.enrolledPublishers = enrolledPublishers;
     }
 
 
@@ -144,17 +96,22 @@ public class Broker extends Thread {
     }
 
     Consumer acceptConnection(Consumer name) {
-        for (Consumer registeredUser : registeredUsers){
+        for (Consumer registeredUser : enrolledConsumers){
             if (registeredUser == name){
-                //connect
+                try {
+                    client = serverSocket.accept();
+                    System.out.println("Publisher is connected!");
+                } catch (IOException e){
+                    e.printStackTrace();
+                }
             }
         }
-        registeredUsers.add(name);
+        enrolledConsumers.add(name);
         return name;
     }
 
     Publisher acceptConnection(Publisher publisher){
-        for (Publisher registeredPublisher : registeredPublishers){
+        for (Publisher registeredPublisher : enrolledPublishers){
             if (registeredPublisher == publisher){
                 try {
                     client = serverSocket.accept();
@@ -164,7 +121,7 @@ public class Broker extends Thread {
                 }
             }
         }
-        registeredPublishers.add(publisher);
+        enrolledPublishers.add(publisher);
         return publisher;
     }
     void filterConsumers(String consumers){
@@ -172,7 +129,7 @@ public class Broker extends Thread {
     void notifyBrokersOnChanges(){
     }
     void notifyPublishers(String publisher){
-        for (Publisher registeredPublishers : registeredPublishers)
+        for (Publisher registeredPublishers : enrolledPublishers)
         {
         }
     }
@@ -180,45 +137,41 @@ public class Broker extends Thread {
     //The input to the hash function is of arbitrary length but output is always of fixed length.
     public void calculateKeys() throws NoSuchAlgorithmException {
         //calculate each of the Brokers hash value
-        Publisher p = new Publisher();
         hashOfBrokers();
+        //calculate TopicsHash
+        Publisher p = new Publisher();
         HashMap<String, Long> topicHashes = calculateTopicHash();
         List<Topic> copyTopics = new ArrayList<>();
-        for (Topic t: p.getpubTopicList()){
+        //getTopicsList
+        for(Topic t: p.getpubTopicList()){
             copyTopics.add(t);
         }
         //compare topic hashes and broker hash value
         if (!topicHashes.isEmpty()) {
             ArrayList<Long> allBrokHash = allBrokerHash();
-            if (allBrokHash!=null) {
+            if(allBrokHash!=null) {
                 //iterate the list of the values of the brokers' hash
-                for (int i=0; i<allBrokHash.size(); i++) {
-                    // gia kathe apo ta topic pou yparxoun sth lista me ta topics tou publisher
+                for (int i=0;i<allBrokHash.size();i++) {
                     for (Topic t : p.getpubTopicList()) {
-                        if(copyTopics.contains(t)){
-                            // pare apo thn topicHashes lista, ayto to object pou antistoixei sto ekastote topic
+                        if(copyTopics.indexOf(t)>-1){
                             long h = topicHashes.get(t.getChannelName());
-                            // take the number of elements of the list minus 1 (-1)
-                            int s = allBrokHash.size() - 1;
+                            int s = allBrokHash.size()-1;
 
-                            if (i==0) { //first iteration
-                                //if h is smaller than broker1 or bigger than the last broker
-                                if ( (h < allBrokHash.get(i)) || (h >= allBrokHash.get(s)) ){
-                                    for (Broker b: getAllBrokers()) {
-                                        if (b.getHash() == allBrokHash.get(i)){
-                                            b.relatedTopics.add(t);
+                            if(i==0){
+                                if((h<allBrokHash.get(i))||(h>=allBrokHash.get(s))){
+                                    for(Broker b: getAllBrokers()) {
+                                        if(b.getbHashValue()==allBrokHash.get(i)){
+                                            b.linkedTopics.add(t);
                                             int index=copyTopics.indexOf(t);
-                                            //remove from copyTopics list the one that have just been added to broker
                                             copyTopics.remove(index);
                                         }
                                     }
                                 }
                             }
-                            //i.e: if h is smaller than broker3 and bigger than broker2, put it in broker3 (i)
-                            else if ( h < allBrokHash.get(i) && h >= allBrokHash.get(i-1)){
-                                for (Broker b: getAllBrokers()) {
-                                    if (b.getHash() == allBrokHash.get(i)){
-                                        b.relatedTopics.add(t);
+                            else if (h<allBrokHash.get(i) && h >= allBrokHash.get(i-1)){
+                                for(Broker b: getAllBrokers()) {
+                                    if(b.getbHashValue()==allBrokHash.get(i)){
+                                        b.linkedTopics.add(t);
                                         int index=copyTopics.indexOf(t);
                                         copyTopics.remove(index);
                                     }
@@ -227,31 +180,30 @@ public class Broker extends Thread {
                             else
                                 continue;
                         }
-
                     }
                 }
             }
         }
         for(Broker b: getAllBrokers()){
             //System.out.println(b.getName()+" "+b.getHash());
-            HashMap<Topic,ArrayList<Queue<Value>>> qPair = new HashMap<>();
-            // gia kathe broker, pare ola ta related topic tou kai valta se mia queue
-            //etsi wste h qPair na exei ta topics tou kathe broker
-            for(Topic t : b.getRelatedTopics()){
-                ArrayList<Queue<Value>> val = new ArrayList<>();
-                qPair.put(t,val);
+            HashMap<Topic,ArrayList<Queue<Value>>> q = new HashMap<>();
+            for(Topic t : b.getlinkedTopics()){
+                //System.out.println(t.getBusLine());
+                ArrayList<Queue<Value>> val = new ArrayList<>();;
+                q.put(t,val);
             }
-            b.setTopicQueue(qPair);
+            b.settopicsQueue(q);
         }
+
     }
 
 
-    //returns sorted list of brokers' hash value
+    //returns list of brokers' hash
     private ArrayList<Long> allBrokerHash() {
         ArrayList<Long> allBrokHash = new ArrayList<>();
         if(!getAllBrokers().isEmpty()) {
             for (Broker b : getAllBrokers()) {
-                allBrokHash.add(b.getHash());
+                allBrokHash.add(b.getbHashValue());
             }   //sort the hash to be in order
             Collections.sort(allBrokHash);
             return allBrokHash;
@@ -261,28 +213,41 @@ public class Broker extends Thread {
         }
     }
 
-
     // hashCode calculates the hash value of the string input (of the topic name)
     private Long hashCode(String input) throws NoSuchAlgorithmException {
+        //The Java MessageDigest class represents a cryptographic hash function which
+        //can calculate a message digest from binary data.
+        //Values returned by a hash function are called message digest, or hash values
+        //xrhsimopoioume thn MD5 methodo
         MessageDigest md = MessageDigest.getInstance("MD5");
-        /* 1. Dhmiourgoume ena object typou MessageDigest me ton typo tou algorithmou
-            ths hash synarthshs pou theloume na ylopoihsoume
-            2. meta mesw aytou tou antikeimenou( md) vazoume se ena byte array
-                thn hashed timh tou input pou exoume dwsei
-            3. telow metatrepoume to byte array se arithmo typou BigInteger
-            4. Telos kanoume thn telikh metatropi thw hash timhs, se long typo.
-        * */
+
+			/*
+			// getting the status of MessageDigest object
+            String str = md.toString();
+			//print status: Status : MD5 Message Digest from SUN, <initialized>
+			*/
+
+        // digest() calculates message digest
+        //  of an input digest() return array of byte
+        //pairneis se pinaka apo theseis byte, to input string
+        //GENIKA, to messageDigest pairnei to input ws pinaka apo byte kai  epistrefei ena MD5 hash instance
         byte[] messageDigest = md.digest(input.getBytes());
+
         // Convert byte array into signum representation
+        //Translates the sign-magnitude representation of a BigInteger into a BigInteger (signed to big integer)
+        //signum - signum of the number (-1 for negative, 0 for zero, 1 for positive).
+        //magnitude - big-endian binary representation of the magnitude of the number.
         BigInteger no = new BigInteger(1, messageDigest);
+        //return Math.abs(no.longValue());
         //convert BigInteger to long and return it
         return no.longValue();
     }
 
 
+
     //get all the topics and calculate a hash value for each topic and put them inside topicHashes list and return
     private HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
-        List<Topic> topics = getRelatedTopics();
+        List<Topic> topics = gettopicsList();
         HashMap<String, Long> topicHashes = new HashMap<>();
         for (Topic t : topics) {
             long h = hashCode(t.getChannelName());
@@ -299,119 +264,106 @@ public class Broker extends Thread {
         for (Broker br : brokers) {
             //String input= this.getIp()+" "+Integer.toString(this.getPort());
             //foreach broker found in the list, split its ip string value and return it inside "parts" array
-            //kathe thesi tou pinaka xwrizetai apo ta kommatia pou kathorizontai apo to regex (escape ".")
-            // this split splits ip number and creates the string array: {192, 168, 10, 23}
+            //kathe thesi tou pinaka xwrizetai apo ta kommatia pou kathorizontai apo to regular expression
             String[] parts = br.getIp().split("\\.");
-
-            // ITS WORKING PROPERLY (merges the parts string array into one string)
-            // StringBuilder is a method that allows appending string representation of char array
-            //StringBuilder sb = new StringBuilder("");
+            String i="";
+            //iterate the array that has just been generated, that includes the ip parts of the whole ip of specific broker
+            //adds to string "i" the value of the positions of parts array, so a big string consisted of the whole ip of
+            //the specific broker is generated
+            /*
+            for (int j = 0; j < parts.length; j++) {
+                if(j==0)
+                    i=parts[j];
+                else
+                    i=i + parts[j];
+            }
+            //in is an integer that is the sum of the i (converted to integer) and the port of that broker
+            int in = Integer.parseInt(i) + br.getPort();
+            String input = Integer.toString(in);
+             */
+            // i = sum of the characters of the ip, for ex: ip = 192.168.10.23 => i=1921681023
             String result = "";
             for (int j = 0; j < parts.length; j++) {
                 result = result + parts[j];
-            }   // result = 1921681025 (string)
+            }
             int ipPlusPort = Integer.parseInt(result) + br.getPort();
             String strIpPlusPort = Integer.toString(ipPlusPort);
             //an h ip tou broker pou ektelei thn parousa synarthsh einai h idia me thn ip apo thn synoliki lista twn
             //brokers, epishs an tautoxrona to port tou parontos broker einai to idio me ayto pou eksetazetai, tote vale
-            //ws hash timh aytou tou broker to apotelesma tou hash pou tha vgalei h synarthsh me to sygkekrimeno input
+            //ws hash timh aytou touu broker to apotelesma tou hash pou tha vgalei h synarthsh me to sygkekrimeno input
             if ((this.getIp().equals(br.getIp())) && (this.getPort() == br.getPort())) {
-                this.hashBroker = hashCode(strIpPlusPort);
+                //this.bHashValue = hashCode(input);
+                this.bHashValue = hashCode(strIpPlusPort);
+
             } else {
                 //alliws vale ston broker pou exoume ayth th stigmh sto iteration, to apotelesma tou hash code tou input
-                br.setHash(hashCode(strIpPlusPort));
+                //br.setbHashValue(hashCode(input));
+                br.setbHashValue(hashCode(strIpPlusPort));
             }
         }
     }
 
-    /*
-            void pull(String brokerName) {
-            try {
-            while(true) {
-            Socket client = serverSocket.accept();
-            System.out.println("Publisher is connected!");
-            //serverSocket = new ServerSocket(4321);
-            BrokerHandler handler = new BrokerHandler(client);
-            //handler.run();
-            Thread thread = new Thread(handler);
-            thread.start();
-            }
-            } catch (IOException e){
-            closeBroker();
-            //e.printStackTrace();
-            }
-            }
-    public void closeBroker(){
-            try{
-            if(serverSocket != null)
-            {
-            serverSocket.close();
-            }
-            }catch (IOException e){
-            e.printStackTrace();
-            }
-            }
-    */
+    void connectToBroker(){
 
-    public List<Broker> getAllBrokers(){
-        return this.allBrokers;
     }
 
-    public void setTopicQueue(HashMap<Topic,ArrayList<Queue<Value>>> tq){
-        this.topicsQueue = tq;
-    }
-
-    public void setHash(long longInput){
-        this.hashBroker = longInput;
-    }
-
-    public Long getHash() {
-        return this.hashBroker;
-    }
-
-
-
-    //den xreiazetai setter, ta pairnei dynamika otan diavazoume ta topics apo to arxeio
-
-    /*
-        public void setTopicQueue(HashMap<Topic,ArrayList<Queue<Value>>> tq){
-            this.topicsQueue = tq;
-        }
-        public HashMap<Topic,ArrayList<Queue<Value>>> getQueueOfTopics(){
-            return this.topicsQueue;
-        }
-        public List<Broker> getAllBrokers(){
-            return this.topicsQueue;
-        }
-    */
     void pull(String brokerName) {
 
         try {
-            while(true) {
+            while (true) {
                 serverSocket = new ServerSocket(4321);
                 BrokerHandler handler = new BrokerHandler(client);
                 //handler.run();
                 Thread thread = new Thread(handler);
                 thread.start();
             }
-        } catch (IOException e){
+        } catch (IOException e) {
             closeBroker();
             //e.printStackTrace();
         }
-
     }
-
-    public void closeBroker(){
-        try{
-            if(serverSocket != null)
-            {
+    public void closeBroker() {
+        try {
+            if (serverSocket != null) {
                 serverSocket.close();
             }
-        }catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+
+    public List<Topic> getlinkedTopics() {
+        return this.linkedTopics;
+    }
+    public int getPort() {
+        return this.port;
+    }
+    public String getIp() {
+        return this.ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+    public void settopicsQueue(HashMap<Topic,ArrayList<Queue<Value>>> tq){
+        this.topicsQueue = tq;
+    }
+    public HashMap<Topic,ArrayList<Queue<Value>>> gettopicsQueue(){
+        return this.topicsQueue;
+    }
+    public List<Broker> getAllBrokers(){
+        return this.allBrokers;
+    }
+    public String getBrokerName(){
+        return this.name;
+    }
+    public Long getbHashValue() {
+        return this.bHashValue;
+    }
+    public void setbHashValue(Long h) {
+        this.bHashValue = h;
+    }
 
 
 
@@ -421,7 +373,6 @@ public class Broker extends Thread {
         //private ObjectInputStream in;
         private PrintWriter out;
         private BufferedReader in;
-        byte[] fileData;
 
         public BrokerHandler(Socket client) {
             this.client = client;
@@ -431,7 +382,9 @@ public class Broker extends Thread {
         @Override
         public void run() {
             //while (client.isConnected()) {
+            // while (true) {
             try {
+                /*
                 DataInputStream dataInputStream = new DataInputStream(client.getInputStream());
 
                 int fileNameLength = dataInputStream.readInt();
@@ -455,24 +408,33 @@ public class Broker extends Thread {
                             error.printStackTrace();
                         }
                     }
-
-
-                    System.out.println(fileName);
-                }
-
-                /*
+                     System.out.println(fileName);
+                        // *
                    SEND MESSAGES
                     BufferedReader br = new BufferedReader(new InputStreamReader(client.getInputStream()));
                     String str = br.readLine();
                     while (str != null) {
                         System.out.println("Publisher data : " + str);
                         str = br.readLine();
-                    }*/
+                    }   * //
+                 */
+                //in = new ObjectInputStream(client.getInputStream());
+                //out = new ObjectOutputStream(client.getOutputStream());
+                //out.flush();
+
+                //out = new PrintWriter(client.getOutputStream(), true);
+                //in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                BufferedReader br = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                String str = br.readLine();
+                while (str != null) {
+                    System.out.println("Publisher data : " + str);
+                    str = br.readLine();
+                }
             } catch (IOException e) {
                 e.printStackTrace();
-                //break;
+                //  break;
             }
-            //  }
+            // }
         }
     }
 }

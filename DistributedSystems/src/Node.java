@@ -17,6 +17,7 @@ public class Node {
     String ip;
     int port;
     String brokerName;
+    private  ArrayList<Topic> topicsList= new ArrayList<>() ;
 
     private static File currDirectory = new File(new File("").getAbsolutePath());
     private static String topicsPath = currDirectory + "\\data\\Topics.txt";
@@ -24,12 +25,12 @@ public class Node {
     private static String publishersPath = currDirectory + "\\data\\Publishers.txt";
 
     public ArrayList<Topic> readTopicsList() {
-        ArrayList<Topic> topics = new ArrayList<>();
+        //ArrayList<Topic> topics = new ArrayList<>();
         ArrayList<String> topicsLines = FileHelper.readFile(topicsPath);
         for (String line : topicsLines) {
-            topics.add(new Topic(line));
+            topicsList.add(new Topic(line));
         }
-        return topics;
+        return topicsList;
     }
 
     public List<Broker> loadBrokers() {
@@ -45,7 +46,7 @@ public class Node {
     private void addPublishers() {
         ArrayList<String> publishersNames = FileHelper.readFile(publishersPath);
         for (String publisherName : publishersNames) {
-            broker.registeredPublishers.add(new Publisher(new ProfileName(publisherName)));
+            broker.enrolledPublishers.add(new Publisher(new ProfileName(publisherName)));
         }
     }
 
@@ -57,11 +58,11 @@ public class Node {
         String username = myUserName.nextLine();
         Publisher publisher = new Publisher(new ProfileName(username));
         boolean flag = false;
-        if (broker.registeredPublishers == null) {
+        if (broker.enrolledPublishers == null) {
             System.out.println("Welcome " + username);
-            broker.registeredPublishers.add(publisher);
+            broker.enrolledPublishers.add(publisher);
         }
-        for (Publisher publ : broker.registeredPublishers) {
+        for (Publisher publ : broker.enrolledPublishers) {
             if (publ.equals(publisher)) {
                 System.out.println("Welcome back " + username);
                 flag = true;
@@ -70,7 +71,7 @@ public class Node {
         }
         if (!flag) {
             System.out.println("Welcome " + username);
-            broker.registeredPublishers.add(publisher);
+            broker.enrolledPublishers.add(publisher);
         }
 
         flag = false;
@@ -100,7 +101,7 @@ public class Node {
             broker.init();
             broker.calculateKeys();
             for (Broker br : broker.getAllBrokers()) {
-                if (br.getQueueOfTopics().containsValue(new Topic(subject))) {
+                if (br.gettopicsQueue().containsValue(new Topic(subject))) {
                     ip = br.getIp();
                     port = br.getPort();
                     brokerName = br.getBrokerName();
@@ -177,6 +178,11 @@ public class Node {
             e.printStackTrace();
         }
     }
+
+    public ArrayList<Topic> gettopicsList(){
+        return this.topicsList;
+    }
+
 
     public static void main(String[] args) {
         Node n = new Node();

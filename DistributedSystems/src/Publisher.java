@@ -125,7 +125,7 @@ public class Publisher implements Runnable {
                 String ip = client.getInetAddress().getHostAddress();
                 for (Broker b : connectedBrokers) {
                     if (b.getIp().equals(ip) && b.getPort() == port) {
-                        for (Topic t : b.getRelatedTopics()) {
+                        for (Topic t : b.getlinkedTopics()) {
                             // for (Queue<Value> q : queueOfTopics.get(t.getChannelName())) {
                             // for (Value v : q) {
                             push(t.getChannelName(), new Value(new MultimediaFile(t.getChannelName())));

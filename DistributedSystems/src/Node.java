@@ -20,9 +20,9 @@ public class Node {
     private  ArrayList<Topic> topicsList= new ArrayList<>() ;
 
     private static File currDirectory = new File(new File("").getAbsolutePath());
-    private static String topicsPath = currDirectory + "\\data\\Topics.txt";
-    private static String brokersPath = currDirectory + "\\data\\Brokers.txt";
-    private static String publishersPath = currDirectory + "\\data\\Publishers.txt";
+    private static String topicsPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
+    private static String brokersPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Brokers.txt";
+    private static String publishersPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Publishers.txt";
 
     public ArrayList<Topic> readTopicsList() {
         //ArrayList<Topic> topics = new ArrayList<>();
@@ -44,9 +44,33 @@ public class Node {
     }
 
     private void addPublishers() {
+        /*
         ArrayList<String> publishersNames = FileHelper.readFile(publishersPath);
         for (String publisherName : publishersNames) {
             broker.enrolledPublishers.add(new Publisher(new ProfileName(publisherName)));
+        }
+        */
+        ArrayList<String> publishersNames = FileHelper.readFile(publishersPath);
+        HashMap<String, ArrayList<Value>> userVideoFilesMap = new HashMap<>();
+        HashMap<String, Integer> subscribedConversations = new HashMap<>();
+        for (String publisherName : publishersNames) {
+            String[] data = publisherName.split(" , ");
+            int i = 0;
+            List<String> userConversations = new ArrayList<String>(Arrays.asList(data[1]));
+            for (String conversations : userConversations){
+                String[] data1 = conversations.split(" ");
+                for(String data2 : data1) {
+                    subscribedConversations.put(data2, ++i);
+                }
+            }
+            List<String> userFiles = new ArrayList<String>(Arrays.asList(data[2]));
+            for (String files : userFiles){
+                String[] data3 = files.split(" ");
+                for(String data4 : data3) {
+                    subscribedConversations.put(data4, ++i);
+                }
+            }
+            broker.enrolledPublishers.add(new Publisher(new ProfileName(data[0], userVideoFilesMap, subscribedConversations)));
         }
     }
 
@@ -96,34 +120,13 @@ public class Node {
         uploadFile(username, subject);
     }
 
-    void connect() {
-        try {
-            broker.init();
-            broker.calculateKeys();
-            for (Broker br : broker.getAllBrokers()) {
-                if (br.gettopicsQueue().containsValue(new Topic(subject))) {
-                    ip = br.getIp();
-                    port = br.getPort();
-                    brokerName = br.getBrokerName();
-                }
-            }
-
-            serverSocket = new ServerSocket(port);
-            Broker server = new Broker(serverSocket);
-            Thread t = new Thread(server);
+    synchronized void connect() {
+        broker.init();
+        for (Broker br : loadBrokers()) {
+            Thread t = new Thread(br);
             t.start();
-
-            client = new Socket(ip, port);
-            Publisher publ = new Publisher();
-            server.acceptConnection(publ);
-            Thread t1 = new Thread(publ);
-            t1.start();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
         }
+
     }
 
     void checkIfSubscribed(String username, String subject) {
@@ -146,26 +149,22 @@ public class Node {
         ProfileName pn = new ProfileName(username);
         Publisher publisher = new Publisher(pn);
 
-        try {
-            System.out.println("Do you want to upload a file to the conversation? Yes/No");
-            Scanner in = new Scanner(System.in);
-            String answer = in.nextLine();
+        System.out.println("Do you want to upload a file to the conversation? Yes/No");
+        Scanner in = new Scanner(System.in);
+        String answer = in.nextLine();
 
-            MultimediaFile mf = new MultimediaFile(answer);
-            Value val = new Value(mf);
-            ArrayList<Value> addValues = new ArrayList<>();
-            addValues.add(val);
-            pn.userVideoFilesMap.put(subject, addValues);
+        MultimediaFile mf = new MultimediaFile(answer);
+        Value val = new Value(mf);
+        ArrayList<Value> addValues = new ArrayList<>();
+        addValues.add(val);
+        pn.userVideoFilesMap.put(subject, addValues);
 
-            if (answer.equals("Yes")) {
-                connect();
-                publisher.send(new Socket(ip, port)); // (subject);
-                disconnect();
-            } else {
-                System.out.println("No problem!");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (answer.equals("Yes")) {
+            connect();
+            publisher.send(subject); //new Socket(ip, port)
+            disconnect();
+        } else {
+            System.out.println("No problem!");
         }
     }
 

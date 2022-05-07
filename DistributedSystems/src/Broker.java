@@ -32,6 +32,7 @@ public class Broker extends Thread {
     private List<Consumer> registeredConsumers;
     private List<Topic> linkedTopics;		//hashmap == queue
     private HashMap<Topic,ArrayList<Queue<Value>>> topicsQueue;
+    private static List<Topic> allTopics;   //all topics of all brokers
     private static List<Consumer> allConsumers;
     private static List<Publisher> allPublishers;
 
@@ -61,7 +62,7 @@ public class Broker extends Thread {
         Node n = new Node();
         // n.readRouteCodes();
         this.allBrokers=n.loadBrokers();
-        this.linkedTopics = n.gettopicsList();
+        this.allTopics = n.gettopicsList();
         //setTopics(n);
         //setPubOwnTopics(this.name);
         //settopicsQueue(n);
@@ -139,11 +140,9 @@ public class Broker extends Thread {
         //calculate each of the Brokers hash value
         hashOfBrokers();
         //calculate TopicsHash
-        Publisher p = new Publisher();
         HashMap<String, Long> topicHashes = calculateTopicHash();
         List<Topic> copyTopics = new ArrayList<>();
-        //getTopicsList
-        for(Topic t: p.getpubTopicList()){
+        for(Topic t: getallTopics()){
             copyTopics.add(t);
         }
         //compare topic hashes and broker hash value
@@ -152,7 +151,7 @@ public class Broker extends Thread {
             if(allBrokHash!=null) {
                 //iterate the list of the values of the brokers' hash
                 for (int i=0;i<allBrokHash.size();i++) {
-                    for (Topic t : p.getpubTopicList()) {
+                    for (Topic t : getallTopics()) {
                         if(copyTopics.indexOf(t)>-1){
                             long h = topicHashes.get(t.getChannelName());
                             int s = allBrokHash.size()-1;
@@ -247,7 +246,7 @@ public class Broker extends Thread {
 
     //get all the topics and calculate a hash value for each topic and put them inside topicHashes list and return
     private HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
-        List<Topic> topics = gettopicsList();
+        List<Topic> topics = getallTopics();
         HashMap<String, Long> topicHashes = new HashMap<>();
         for (Topic t : topics) {
             long h = hashCode(t.getChannelName());
@@ -336,6 +335,10 @@ public class Broker extends Thread {
     public List<Topic> getlinkedTopics() {
         return this.linkedTopics;
     }
+    public List<Topic> getallTopics() {
+        return this.allTopics;
+    }
+
     public int getPort() {
         return this.port;
     }

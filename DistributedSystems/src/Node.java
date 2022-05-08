@@ -1,30 +1,37 @@
 import java.io.*;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import helpers.FileHelper;
 
-public class Node {
+public class Node{
+
 
     static List<Broker> brokers = new ArrayList<>();
     Broker broker = new Broker();
-    ServerSocket serverSocket;
+    static ServerSocket serverSocket;
     Socket client;
     int num;
     String subject;
-    String ip;
-    int port;
+    static String ip;
+    static int port;
     String brokerName;
-    private  ArrayList<Topic> topicsList= new ArrayList<>() ;
+    private static  ArrayList<Topic> topicsList= new ArrayList<>() ;
+    Publisher publisher = new Publisher();
+    static Vector<ClientHandler> ar = new Vector<>();
+
 
     private static File currDirectory = new File(new File("").getAbsolutePath());
-    private static String topicsPath = currDirectory + "\\data\\Topics.txt";
-    private static String brokersPath = currDirectory + "\\data\\Brokers.txt";
-    private static String publishersPath = currDirectory + "\\data\\Publishers.txt";
+    private static String topicsPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
+    private static String brokersPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Brokers.txt";
+    private static String publishersPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Publishers.txt";
 
-    public ArrayList<Topic> readTopicsList() {
+
+    public static ArrayList<Topic> readTopicsList() {
         //ArrayList<Topic> topics = new ArrayList<>();
         ArrayList<String> topicsLines = FileHelper.readFile(topicsPath);
         for (String line : topicsLines) {
@@ -43,131 +50,107 @@ public class Node {
         return brokers;
     }
 
-    private void addPublishers() {
-        ArrayList<String> publishersNames = FileHelper.readFile(publishersPath);
-        for (String publisherName : publishersNames) {
-            broker.enrolledPublishers.add(new Publisher(new ProfileName(publisherName)));
+
+    private void hashOfBrokers() throws NoSuchAlgorithmException {
+        for (Broker br : brokers) {
+            int ipPlusPort = Integer.parseInt(br.getIp()) + br.getPort();
+            String strIpPlusPort = Integer.toString(ipPlusPort);
+            br.setbHashValue(hashCode(strIpPlusPort));
         }
     }
 
-    private void init() {
-        addPublishers();
-
-        System.out.println("Please enter your name:");
-        Scanner myUserName = new Scanner(System.in);
-        String username = myUserName.nextLine();
-        Publisher publisher = new Publisher(new ProfileName(username));
-        boolean flag = false;
-        if (broker.enrolledPublishers == null) {
-            System.out.println("Welcome " + username);
-            broker.enrolledPublishers.add(publisher);
-        }
-        for (Publisher publ : broker.enrolledPublishers) {
-            if (publ.equals(publisher)) {
-                System.out.println("Welcome back " + username);
-                flag = true;
-                break;
-            }
-        }
-        if (!flag) {
-            System.out.println("Welcome " + username);
-            broker.enrolledPublishers.add(publisher);
-        }
-
-        flag = false;
-        System.out.println("Select a topic");
-        Scanner myTopic = new Scanner(System.in);
-        subject = myTopic.nextLine();
-        Node n = new Node();
-        ArrayList<Topic> topics = n.readTopicsList();
-
-        for (Topic topic : topics) {
-            if (topic.getChannelName().equals(subject)) {
-                flag = true;
-                break;
-            }
-        }
-
-        if (!flag) {
-            FileHelper.writeFile(topicsPath, subject);
-            topics.add(new Topic(subject));
-        }
-        checkIfSubscribed(username, subject);
-        uploadFile(username, subject);
+    private Long hashCode(String input) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] messageDigest = md.digest(input.getBytes());
+        BigInteger no = new BigInteger(1, messageDigest);
+        return no.longValue();
     }
 
-    void connect() {
-        try {
-            broker.init();
-            broker.calculateKeys();
-            for (Broker br : broker.getAllBrokers()) {
-                if (br.gettopicsQueue().containsValue(new Topic(subject))) {
-                    ip = br.getIp();
-                    port = br.getPort();
-                    brokerName = br.getBrokerName();
+
+    public void calculateKeys() throws NoSuchAlgorithmException {
+        // calculate each of the Brokers hash value
+        hashOfBrokers();
+        // calculate TopicsHash
+        HashMap<String, Long> topicHashes = calculateTopicHash();
+        List<Topic> copyTopics = new ArrayList<>();
+        for (Topic t : topicsList) {
+            copyTopics.add(t);
+        }
+        // compare topic hashes and broker hash value
+        if (!topicHashes.isEmpty()) {
+            ArrayList<Long> allBrokHash = allBrokerHash();
+            if (allBrokHash != null) {
+                // iterate the list of the values of the brokers' hash
+                for (int i = 0; i < allBrokHash.size(); i++) {
+                    for (Topic t : topicsList) {
+                        if (copyTopics.indexOf(t) > -1) {
+                            long h = topicHashes.get(t.getChannelName());
+                            int s = allBrokHash.size() - 1;
+
+                            if (i == 0) {
+                                if ((h < allBrokHash.get(i)) || (h >= allBrokHash.get(s))) {
+                                    for (Broker b : brokers) {
+                                        if (b.getbHashValue() == allBrokHash.get(i)) {
+                                            b.linkedTopics.add(t);
+                                            int index = copyTopics.indexOf(t);
+                                            copyTopics.remove(index);
+                                        }
+                                    }
+                                }
+                            } else if (h < allBrokHash.get(i) && h >= allBrokHash.get(i - 1)) {
+                                for (Broker b : brokers) {
+                                    if (b.getbHashValue() == allBrokHash.get(i)) {
+                                        b.linkedTopics.add(t);
+                                        int index = copyTopics.indexOf(t);
+                                        copyTopics.remove(index);
+                                    }
+                                }
+                            } else
+                                continue;
+                        }
+                    }
                 }
             }
-
-            serverSocket = new ServerSocket(port);
-            Broker server = new Broker(serverSocket);
-            Thread t = new Thread(server);
-            t.start();
-
-            client = new Socket(ip, port);
-            Publisher publ = new Publisher();
-            server.acceptConnection(publ);
-            Thread t1 = new Thread(publ);
-            t1.start();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
         }
-    }
-
-    void checkIfSubscribed(String username, String subject) {
-        ProfileName user = new ProfileName(username);
-
-        user.getSubscribedConversations().put("DATA_BASE", 1);
-
-        for (Map.Entry<String, Integer> entry : user.getSubscribedConversations().entrySet())
-            num = entry.getValue();
-        if (user.getSubscribedConversations().containsValue(subject)) {
-            System.out.println("User subscribed to " + subject);
-        } else {
-            user.getSubscribedConversations().put(subject, num + 1);
-            System.out.println("Welcome to the channel " + subject);
-        }
-
-    }
-
-    void uploadFile(String username, String subject) {
-        ProfileName pn = new ProfileName(username);
-        Publisher publisher = new Publisher(pn);
-
-        try {
-            System.out.println("Do you want to upload a file to the conversation? Yes/No");
-            Scanner in = new Scanner(System.in);
-            String answer = in.nextLine();
-
-            MultimediaFile mf = new MultimediaFile(answer);
-            Value val = new Value(mf);
-            ArrayList<Value> addValues = new ArrayList<>();
-            addValues.add(val);
-            pn.userVideoFilesMap.put(subject, addValues);
-
-            if (answer.equals("Yes")) {
-                connect();
-                publisher.send(new Socket(ip, port)); // (subject);
-                disconnect();
-            } else {
-                System.out.println("No problem!");
+        for (Broker b : brokers) {
+            // System.out.println(b.getName()+" "+b.getHash());
+            HashMap<Topic, ArrayList<Queue<Value>>> q = new HashMap<>();
+            for (Topic t : b.linkedTopics) {  //b.getlinkedTopics()
+                // System.out.println(t.getBusLine());
+                ArrayList<Queue<Value>> val = new ArrayList<>();
+                ;
+                q.put(t, val);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+            b.settopicsQueue(q);
+        }
+
+    }
+
+    // returns list of brokers' hash
+    private ArrayList<Long> allBrokerHash() {
+        ArrayList<Long> allBrokHash = new ArrayList<>();
+        if (!brokers.isEmpty()) {
+            for (Broker b : brokers) {
+                allBrokHash.add(b.getbHashValue());
+            } // sort the hash to be in order
+            Collections.sort(allBrokHash);
+            return allBrokHash;
+        } else {
+            return null;
         }
     }
+
+
+    private HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
+
+        HashMap<String, Long> topicHashes = new HashMap<>();
+        for (Topic t : topicsList) {
+            long h = hashCode(t.getChannelName());
+            topicHashes.put(t.getChannelName(), h);
+        }
+        return topicHashes;
+    }
+
 
     void disconnect() {
         try {
@@ -183,14 +166,170 @@ public class Node {
         return this.topicsList;
     }
 
+    public static void main(String[] args) throws IOException {
 
-    public static void main(String[] args) {
-        Node n = new Node();
-        ArrayList<Topic> topics = n.readTopicsList();
-        for (Topic topic : topics) {
-            System.out.println(topic.getChannelName());
+        // Vector to store active clients
+
+
+        // counter for clients
+            int i = 0;
+            // server is listening on port 1234
+            serverSocket = new ServerSocket(1234);
+
+            Socket s;
+
+            // running infinite loop for getting
+            // client request
+            while (true)
+            {
+                // Accept the incoming request
+                s = serverSocket.accept();
+
+                System.out.println("New client request received : " + s);
+
+                // obtain input and output streams
+                DataInputStream dis = new DataInputStream(s.getInputStream());
+                DataOutputStream dos = new DataOutputStream(s.getOutputStream());
+
+                System.out.println("Creating a new handler for this client...");
+
+                // Create a new handler object for handling this request.
+                ClientHandler mtch = new ClientHandler(s,"client " + i, dis, dos);
+
+                // Create a new Thread with this object.
+                Thread t = new Thread(mtch);
+
+                System.out.println("Adding this client to active client list");
+
+                // add this client to active clients list
+                ar.add(mtch);
+
+                // start the thread.
+                t.start();
+
+                // increment i for new client.
+                // i is used for naming only, and can be replaced
+                // by any naming scheme
+                i++;
+
+
         }
-        // n.loadBrokers();
-        n.init();
     }
+
+
+
+
+
+
+
+    // ClientHandler class
+static class ClientHandler implements Runnable
+{
+    Scanner scn = new Scanner(System.in);
+    private String name;
+    final DataInputStream dis;
+    final DataOutputStream dos;
+    Socket s;
+    boolean isloggedin;
+
+    // constructor
+    public ClientHandler(Socket s, String name,
+                         DataInputStream dis, DataOutputStream dos) {
+        this.dis = dis;
+        this.dos = dos;
+        this.name = name;
+        this.s = s;
+        this.isloggedin=true;
+    }
+
+    @Override
+    public void run() {
+
+        String received;
+        while (true)
+        {
+            try {
+                String type = dis.readUTF();
+
+                if (type.equals("1")) {
+
+                    int fileNameLength = dis.readInt();
+
+                    if (fileNameLength > 0) {
+                        byte[] fileNameBytes = new byte[fileNameLength];
+                        dis.readFully(fileNameBytes, 0, fileNameBytes.length);
+                        String fileName = new String(fileNameBytes);
+
+                        int fileContentLength = dis.readInt();
+
+                        if (fileContentLength > 0) {
+                            byte[] fileContentBytes = new byte[fileContentLength];
+                            dis.readFully(fileContentBytes, 0, fileContentLength);
+                            File fileToDownload = new File("C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\mediaFile\\marias_wedding.mp4");
+                            try {
+                                FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
+                                fileOutputStream.write(fileContentBytes);
+                                fileOutputStream.close();
+                            } catch (IOException error) {
+                                error.printStackTrace();
+                            }
+                        }
+                        for (ClientHandler mc : ar) {
+                            // if the recipient is found, write on its
+                            // output stream
+                            if (mc.isloggedin == true) {
+                                mc.dos.writeUTF(this.name + " : " + fileName);
+                                break;
+                            }
+                        }
+                    }
+
+
+                } else if (type.equals("2")) {
+
+
+                    // receive the string
+                    received = dis.readUTF();
+
+                    System.out.println(received);
+
+                    if (received.equals("logout")) {
+                        this.isloggedin = false;
+                        this.s.close();
+                        break;
+                    }
+
+                    // break the string into message and recipient part
+                    StringTokenizer st = new StringTokenizer(received, "#");
+                    String MsgToSend = st.nextToken();
+                    String recipient = st.nextToken();
+
+                    // search for the recipient in the connected devices list.
+                    // ar is the vector storing client of active users
+                    for (ClientHandler mc : ar) {
+                        // if the recipient is found, write on its
+                        // output stream
+                        if (mc.name.equals(recipient) && mc.isloggedin == true) {
+                            mc.dos.writeUTF(this.name + " : " + MsgToSend);
+                            break;
+                        }
+                    }
+                }
+                } catch(IOException e){
+
+                    e.printStackTrace();
+                }
+
+        }
+        try
+        {
+            // closing resources
+            this.dis.close();
+            this.dos.close();
+
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
+}
 }

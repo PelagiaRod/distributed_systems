@@ -6,10 +6,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-//import helpers.FileHelper;
+import helpers.FileHelper;
 
-public class Node{
-
+public class Node {
 
     static List<Broker> brokers = new ArrayList<>();
     Broker broker = new Broker();
@@ -20,28 +19,29 @@ public class Node{
     static String ip;
     static int port;
     String brokerName;
-    private static  ArrayList<Topic> topicsList= new ArrayList<>() ;
+    private static ArrayList<Topic> topicsList = new ArrayList<>();
     Publisher publisher = new Publisher();
     static Vector<ClientHandler> ar = new Vector<>();
-    //private HashMap<String, String> topicsQueue;
+    // private HashMap<String, String> topicsQueue;
     private HashMap<ClientHandler, ArrayList<String>> userMessQueue;
 
-
-
     private static File currDirectory = new File(new File("").getAbsolutePath());
-    private static String topicsPath = currDirectory + "\\Dataset\\Topics.txt";
-    private static String brokersPath = currDirectory + "\\Dataset\\Brokers.txt";
-    private static String publishersPath = currDirectory + "\\Dataset\\Publishers.txt";
+    private static String topicsPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
+    private static String brokersPath = currDirectory
+            + "\\distributed_systems\\DistributedSystems\\data\\Brokers.txt";
 
     /*
-    private static String topicsPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
-    private static String brokersPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Brokers.txt";
-    private static String publishersPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Publishers.txt";
-
+     * private static String topicsPath = currDirectory +
+     * "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
+     * private static String brokersPath = currDirectory +
+     * "\\distributed_systems\\DistributedSystems\\data\\Brokers.txt";
+     * private static String publishersPath = currDirectory +
+     * "\\distributed_systems\\DistributedSystems\\data\\Publishers.txt";
+     * 
      */
 
     public static ArrayList<Topic> readTopicsList() {
-        //ArrayList<Topic> topics = new ArrayList<>();
+        // ArrayList<Topic> topics = new ArrayList<>();
         ArrayList<String> topicsLines = FileHelper.readFile(topicsPath);
         for (String line : topicsLines) {
             topicsList.add(new Topic(line));
@@ -58,13 +58,12 @@ public class Node{
         return brokers;
     }
 
-
     private static void hashOfBrokers() throws NoSuchAlgorithmException {
 
         for (Broker br : brokers) {
-            //int ipPlusPort = Integer.parseInt(br.getIp()) + br.getPort();
+            // int ipPlusPort = Integer.parseInt(br.getIp()) + br.getPort();
             String ipPlusPort = br.getIp() + br.getPort();
-            //String strIpPlusPort = Integer.toString(ipPlusPort);
+            // String strIpPlusPort = Integer.toString(ipPlusPort);
             br.setbHashValue(hashCode(ipPlusPort));
         }
     }
@@ -76,28 +75,25 @@ public class Node{
         return no.longValue();
     }
 
-
     public static void calculateKeys() throws NoSuchAlgorithmException {
         loadBrokers();
         readTopicsList();
         hashOfBrokers();
         HashMap<String, Long> topicHashes = calculateTopicHash();
 
-
         for (Topic c : topicsList) {
             boolean flag = false;
-            for(Broker b: brokers){
-                if(c.hashCode() >= b.hashCode()){
+            for (Broker b : brokers) {
+                if (c.hashCode() >= b.hashCode()) {
                     continue;
                 }
                 b.linkedTopics.add(c);
                 flag = true;
             }
-            if(!flag){
+            if (!flag) {
                 brokers.get(0).linkedTopics.add(c);
             }
         }
-
 
     }
 
@@ -115,7 +111,6 @@ public class Node{
         }
     }
 
-
     private static HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
 
         HashMap<String, Long> topicHashes = new HashMap<>();
@@ -125,7 +120,6 @@ public class Node{
         }
         return topicHashes;
     }
-
 
     void disconnect() {
         try {
@@ -137,14 +131,13 @@ public class Node{
         }
     }
 
-    public ArrayList<Topic> gettopicsList(){
+    public ArrayList<Topic> gettopicsList() {
         return this.topicsList;
     }
 
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
         calculateKeys();
         // Vector to store active clients
-
 
         // counter for clients
         int i = 0;
@@ -155,11 +148,9 @@ public class Node{
 
         // running infinite loop for getting
         // client request
-        while (true)
-        {
+        while (true) {
             // Accept the incoming request
             s = serverSocket.accept();
-
 
             System.out.println("New client request received : " + s);
 
@@ -173,7 +164,7 @@ public class Node{
             System.out.println("Creating a new handler for this client...");
 
             // Create a new handler object for handling this request.
-            ClientHandler mtch = new ClientHandler(s,username, subject, dis, dos);
+            ClientHandler mtch = new ClientHandler(s, username, subject, dis, dos);
 
             // Create a new Thread with this object.
             Thread t = new Thread(mtch);
@@ -191,19 +182,11 @@ public class Node{
             // by any naming scheme
             i++;
 
-
         }
     }
 
-
-
-
-
-
-
     // ClientHandler class
-    static class ClientHandler implements Runnable
-    {
+    static class ClientHandler implements Runnable {
         Scanner scn = new Scanner(System.in);
         private String name;
         final DataInputStream dis;
@@ -211,23 +194,26 @@ public class Node{
         Socket s;
         boolean isloggedin;
         Broker broker;
+        String subject;
+        Topic topic;
 
         // constructor
         public ClientHandler(Socket s, String name, String subject,
-                             DataInputStream dis, DataOutputStream dos) {
+                DataInputStream dis, DataOutputStream dos) {
             this.dis = dis;
             this.dos = dos;
             this.name = name;
-
+            this.subject = subject;
+            this.topic = new Topic(subject);
             this.s = s;
-            this.isloggedin=true;
+            this.isloggedin = true;
             boolean brokFound = false;
-            for(Broker br: brokers){
-                if(brokFound)
-                        break;
-                for(Topic c: br.linkedTopics){
+            for (Broker br : brokers) {
+                if (brokFound)
+                    break;
+                for (Topic c : br.linkedTopics) {
 
-                    if(c.getChannelName().equals(subject)){
+                    if (c.getChannelName().equals(subject)) {
                         broker = br;
                         brokFound = true;
                         break;
@@ -241,11 +227,13 @@ public class Node{
         public void run() {
 
             String received;
-            while (true)
-            {
+            while (true) {
                 try {
                     String type = dis.readUTF();
-
+                    Queue<String> topicsMessages = broker.topicsQueue.get(this.topic);
+                    for (String tM : topicsMessages) {
+                        this.dos.writeUTF(tM);
+                    }
                     if (type.equals("1")) {
 
                         int fileNameLength = dis.readInt();
@@ -260,7 +248,8 @@ public class Node{
                             if (fileContentLength > 0) {
                                 byte[] fileContentBytes = new byte[fileContentLength];
                                 dis.readFully(fileContentBytes, 0, fileContentLength);
-                                File fileToDownload = new File("C:\\Users\\Cosmic Travellers\\Desktop\\downloads\\logo_new.jpg");
+                                File fileToDownload = new File(
+                                        "C:\\Users\\Cosmic Travellers\\Desktop\\downloads\\logo_new.jpg");
                                 try {
                                     FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
                                     fileOutputStream.write(fileContentBytes);
@@ -273,15 +262,18 @@ public class Node{
                                 // if the recipient is found, write on its
                                 // output stream
                                 if (mc.isloggedin == true) {
+                                    if (broker.topicsQueue.get(this.topic) == null) {
+                                        broker.topicsQueue.put(this.topic, new LinkedList<String>());
+                                    }
+                                    broker.topicsQueue.get(this.topic)
+                                            .add(this.name + " : File Upload Successful");
                                     mc.dos.writeUTF(this.name + " : " + fileName);
                                     break;
                                 }
                             }
                         }
 
-
                     } else if (type.equals("2")) {
-
 
                         // receive the string
                         received = dis.readUTF();
@@ -305,24 +297,27 @@ public class Node{
                             // if the recipient is found, write on its
                             // output stream
                             if (mc.name.equals(recipient) && mc.isloggedin == true) {
+                                if (broker.topicsQueue.get(this.topic) == null) {
+                                    broker.topicsQueue.put(this.topic, new LinkedList<String>());
+                                }
+                                broker.topicsQueue.get(this.topic).add(this.name + " : " + MsgToSend);
                                 mc.dos.writeUTF(this.name + " : " + MsgToSend);
                                 break;
                             }
                         }
                     }
-                } catch(IOException e){
+                } catch (IOException e) {
 
                     e.printStackTrace();
                 }
 
             }
-            try
-            {
+            try {
                 // closing resources
                 this.dis.close();
                 this.dos.close();
 
-            }catch(IOException e){
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }

@@ -7,6 +7,7 @@ import java.util.Queue;
 import java.security.MessageDigest;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.math.BigInteger;
 import java.io.*;
 
@@ -29,17 +30,18 @@ public class Broker implements Runnable {
     Socket client;
     private List<Consumer> registeredConsumers;
     List<Topic> linkedTopics = new ArrayList<Topic>();; // hashmap == queue
-    private HashMap<Topic, ArrayList<Queue<Value>>> topicsQueue;
+    public HashMap<Topic, Queue<String>> topicsQueue = new HashMap<>();
 
     private static List<Topic> allTopics; // all topics of all brokers
     private static List<Consumer> allConsumers = new ArrayList<Consumer>();
     private static List<Publisher> allPublishers = new ArrayList<Publisher>();
-/*
-    public static void main(String args[]) throws IOException {
-        ServerSocket sSocket = new ServerSocket(4321);
-        Broker server = new Broker(sSocket);
-        server.pull("Hello");
-    }*/
+    /*
+     * public static void main(String args[]) throws IOException {
+     * ServerSocket sSocket = new ServerSocket(4321);
+     * Broker server = new Broker(sSocket);
+     * server.pull("Hello");
+     * }
+     */
 
     public Broker() {
     }
@@ -49,11 +51,11 @@ public class Broker implements Runnable {
         this.name = name;
         this.ip = ip;
         this.port = port;
-        //this.enrolledPublishers = new ArrayList<>();
-        //this.enrolledConsumers = new ArrayList<>();
-        //this.linkedTopics = new ArrayList<>();
-        //this.topicsQueue = new HashMap<>();
-        //init();
+        // this.enrolledPublishers = new ArrayList<>();
+        // this.enrolledConsumers = new ArrayList<>();
+        // this.linkedTopics = new ArrayList<>();
+        // this.topicsQueue = new HashMap<>();
+        // init();
     }
 
     public synchronized void init() {
@@ -133,34 +135,32 @@ public class Broker implements Runnable {
         }
     }
 
-
     synchronized void connectToBroker() {
-        //init();
-        //for (Broker br : allBrokers) {
-        //Broker br = allBrokers.get(0);
-        //ip = br.getIp();
-        //port = br.getPort();
+        // init();
+        // for (Broker br : allBrokers) {
+        // Broker br = allBrokers.get(0);
+        // ip = br.getIp();
+        // port = br.getPort();
 
         try {
             Broker br = new Broker(new ServerSocket(4321));
-            //ip = br.getIp();
-            //port = br.getPort();
+            // ip = br.getIp();
+            // port = br.getPort();
             Socket client1 = new Socket("127.0.0.1", 4321);
-            //ServerSocket serverSocket = new ServerSocket(port);
-            //BrokerHandler handler = new BrokerHandler(client1);
+            // ServerSocket serverSocket = new ServerSocket(port);
+            // BrokerHandler handler = new BrokerHandler(client1);
             br.pull("Hello");
-            //Thread t = new Thread(handler);
-            //t.start();
+            // Thread t = new Thread(handler);
+            // t.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        //Thread t = new Thread(br);
-        //t.start();
-        //}
+        // Thread t = new Thread(br);
+        // t.start();
+        // }
     }
 
     void pull(String brokerName) {
-
 
     }
 
@@ -194,14 +194,6 @@ public class Broker implements Runnable {
         this.ip = ip;
     }
 
-    public void settopicsQueue(HashMap<Topic, ArrayList<Queue<Value>>> tq) {
-        this.topicsQueue = tq;
-    }
-
-    public HashMap<Topic, ArrayList<Queue<Value>>> gettopicsQueue() {
-        return this.topicsQueue;
-    }
-
     public List<Broker> getAllBrokers() {
         return allBrokers;
     }
@@ -220,14 +212,14 @@ public class Broker implements Runnable {
 
     @Override
     public void run() {
-        //ServerSocket sSocket = null;
-        //try {
-        //    sSocket = new ServerSocket(4321);
-        //} catch (IOException e) {
-        //    e.printStackTrace();
-        //}
-        //Broker server = new Broker(sSocket);
-        //server.pull("Hello");
+        // ServerSocket sSocket = null;
+        // try {
+        // sSocket = new ServerSocket(4321);
+        // } catch (IOException e) {
+        // e.printStackTrace();
+        // }
+        // Broker server = new Broker(sSocket);
+        // server.pull("Hello");
     }
 }
 

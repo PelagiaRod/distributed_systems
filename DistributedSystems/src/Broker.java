@@ -28,8 +28,9 @@ public class Broker implements Runnable {
     ServerSocket serverSocket;
     Socket client;
     private List<Consumer> registeredConsumers;
-    List<Topic> linkedTopics; // hashmap == queue
+    List<Topic> linkedTopics = new ArrayList<Topic>();; // hashmap == queue
     private HashMap<Topic, ArrayList<Queue<Value>>> topicsQueue;
+
     private static List<Topic> allTopics; // all topics of all brokers
     private static List<Consumer> allConsumers = new ArrayList<Consumer>();
     private static List<Publisher> allPublishers = new ArrayList<Publisher>();

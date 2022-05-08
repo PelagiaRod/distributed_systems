@@ -1,31 +1,31 @@
 
 // import javafx.util.Pair;
-import helpers.FileHelper;
-
-import java.io.*;
-import java.net.*;
-import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Scanner;
 
 //User profile
 public class Publisher implements Runnable {
     // Socket client;
     static String username;
     ProfileName profileName;
-    private DatagramSocket datagramSocket;
-    private InetAddress inetAddress;
-    private byte[] buffer;
     private List<Topic> pubTopicList;
     private List<Broker> connectedBrokers;
-    // private String ipAddress = "127.0.0.1"; // must be taken dynamically so hash
-    // code can work correctly
-    // private int port = 1234; // must be taken dynamically so hush code can work
-    // correctly
+
     private HashMap<ProfileName, AbstractMap.SimpleEntry<String, Value>> queueOfTopics;
     static Socket client;
 
     private static File currDirectory = new File(new File("").getAbsolutePath());
-    private static String topicsPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
 
     public static void main(String[] args) throws IOException {
 
@@ -42,7 +42,7 @@ public class Publisher implements Runnable {
         for (Topic topic : topics) {
             if (topic.getChannelName().equals(subject)) {
 
-                System.out.println("1. Upload file. \n 2. Write text.");
+                System.out.println("1. Upload file. \n2. Write text.");
                 String type = scanner.nextLine();
                 client = new Socket("127.0.0.1", 1234);
                 publisher.push(subject, type);
@@ -185,13 +185,11 @@ public class Publisher implements Runnable {
              * 
              * Value value = new Value(new MultimediaFile(fileName));
              */
-            FileInputStream fileInputStream = new FileInputStream(
-                    "C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\ΚΑΤΑΝΕΜΗΜΕΝΑ\\Red_Kitten_01.jpg");
-            File file = new File(
-                    "C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\ΚΑΤΑΝΕΜΗΜΕΝΑ\\Red_Kitten_01.jpg");
+            FileInputStream fileInputStream = new FileInputStream(currDirectory + "\\data\\monilinia.jpg");
+            File file = new File(currDirectory + "\\data\\monilinia.jpg");
 
             DataOutputStream dataOutputStream = new DataOutputStream(client.getOutputStream());
-            String filename = "Red_Kitten_01.jpg";
+            String filename = "monilinia.jpg";
             byte[] fileNameBytes = filename.getBytes(); // StandardCharsets.UTF_8
 
             byte[] fileContentBytes = new byte[(int) file.length()];
@@ -205,19 +203,6 @@ public class Publisher implements Runnable {
             dataOutputStream.write(fileContentBytes);
 
             dataOutputStream.flush();
-
-            /*
-             * Sending messages
-             * //out = new ObjectOutputStream(connection.getOutputStream());
-             * //in = new ObjectInputStream(connection.getInputStream());
-             * BufferedReader inReader = new BufferedReader(new
-             * InputStreamReader(System.in));
-             * while (true)
-             * {
-             * String message = inReader.readLine();
-             * System.out.println(message);
-             * }
-             */
         } catch (IOException e) {
             e.printStackTrace();
         }

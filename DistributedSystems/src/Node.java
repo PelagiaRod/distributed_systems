@@ -26,19 +26,9 @@ public class Node {
     private HashMap<ClientHandler, ArrayList<String>> userMessQueue;
 
     private static File currDirectory = new File(new File("").getAbsolutePath());
-    private static String topicsPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
+    private static String topicsPath = currDirectory + "\\data\\Topics.txt";
     private static String brokersPath = currDirectory
-            + "\\distributed_systems\\DistributedSystems\\data\\Brokers.txt";
-
-    /*
-     * private static String topicsPath = currDirectory +
-     * "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
-     * private static String brokersPath = currDirectory +
-     * "\\distributed_systems\\DistributedSystems\\data\\Brokers.txt";
-     * private static String publishersPath = currDirectory +
-     * "\\distributed_systems\\DistributedSystems\\data\\Publishers.txt";
-     * 
-     */
+            + "\\data\\Brokers.txt";
 
     public static ArrayList<Topic> readTopicsList() {
         // ArrayList<Topic> topics = new ArrayList<>();
@@ -229,11 +219,14 @@ public class Node {
             String received;
             while (true) {
                 try {
-                    String type = dis.readUTF();
                     Queue<String> topicsMessages = broker.topicsQueue.get(this.topic);
-                    for (String tM : topicsMessages) {
-                        this.dos.writeUTF(tM);
+                    if (topicsMessages != null) {
+                        for (String tM : topicsMessages) {
+                            this.dos.writeUTF(tM);
+                        }
                     }
+                    String type = dis.readUTF();
+
                     if (type.equals("1")) {
 
                         int fileNameLength = dis.readInt();
@@ -248,8 +241,7 @@ public class Node {
                             if (fileContentLength > 0) {
                                 byte[] fileContentBytes = new byte[fileContentLength];
                                 dis.readFully(fileContentBytes, 0, fileContentLength);
-                                File fileToDownload = new File(
-                                        "C:\\Users\\Cosmic Travellers\\Desktop\\downloads\\logo_new.jpg");
+                                File fileToDownload = new File(currDirectory + "\\data\\monilinia.jpg");
                                 try {
                                     FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
                                     fileOutputStream.write(fileContentBytes);
@@ -288,15 +280,15 @@ public class Node {
 
                         // break the string into message and recipient part
                         StringTokenizer st = new StringTokenizer(received, "#");
-                        String MsgToSend = st.nextToken();
                         String recipient = st.nextToken();
+                        String MsgToSend = st.nextToken();
 
                         // search for the recipient in the connected devices list.
                         // ar is the vector storing client of active users
                         for (ClientHandler mc : ar) {
                             // if the recipient is found, write on its
                             // output stream
-                            if (mc.name.equals(recipient) && mc.isloggedin == true) {
+                            if (mc.isloggedin == true) {
                                 if (broker.topicsQueue.get(this.topic) == null) {
                                     broker.topicsQueue.put(this.topic, new LinkedList<String>());
                                 }

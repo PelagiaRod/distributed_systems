@@ -6,7 +6,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-import helpers.FileHelper;
+//import helpers.FileHelper;
 
 public class Node{
 
@@ -16,20 +16,29 @@ public class Node{
     static ServerSocket serverSocket;
     Socket client;
     int num;
-    String subject;
+    static String subject;
     static String ip;
     static int port;
     String brokerName;
     private static  ArrayList<Topic> topicsList= new ArrayList<>() ;
     Publisher publisher = new Publisher();
     static Vector<ClientHandler> ar = new Vector<>();
+    //private HashMap<String, String> topicsQueue;
+    private HashMap<ClientHandler, ArrayList<String>> userMessQueue;
+
 
 
     private static File currDirectory = new File(new File("").getAbsolutePath());
+    private static String topicsPath = currDirectory + "\\Dataset\\Topics.txt";
+    private static String brokersPath = currDirectory + "\\Dataset\\Brokers.txt";
+    private static String publishersPath = currDirectory + "\\Dataset\\Publishers.txt";
+
+    /*
     private static String topicsPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
     private static String brokersPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Brokers.txt";
     private static String publishersPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Publishers.txt";
 
+     */
 
     public static ArrayList<Topic> readTopicsList() {
         //ArrayList<Topic> topics = new ArrayList<>();
@@ -40,26 +49,27 @@ public class Node{
         return topicsList;
     }
 
-    public List<Broker> loadBrokers() {
+    public static List<Broker> loadBrokers() {
         ArrayList<String> brokersLines = FileHelper.readFile(brokersPath);
         for (String line : brokersLines) {
             String[] data = line.split(" , ");
             brokers.add(new Broker(data[0], data[1], Integer.parseInt(data[2])));
         }
-
         return brokers;
     }
 
 
-    private void hashOfBrokers() throws NoSuchAlgorithmException {
+    private static void hashOfBrokers() throws NoSuchAlgorithmException {
+
         for (Broker br : brokers) {
-            int ipPlusPort = Integer.parseInt(br.getIp()) + br.getPort();
-            String strIpPlusPort = Integer.toString(ipPlusPort);
-            br.setbHashValue(hashCode(strIpPlusPort));
+            //int ipPlusPort = Integer.parseInt(br.getIp()) + br.getPort();
+            String ipPlusPort = br.getIp() + br.getPort();
+            //String strIpPlusPort = Integer.toString(ipPlusPort);
+            br.setbHashValue(hashCode(ipPlusPort));
         }
     }
 
-    private Long hashCode(String input) throws NoSuchAlgorithmException {
+    private static Long hashCode(String input) throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("MD5");
         byte[] messageDigest = md.digest(input.getBytes());
         BigInteger no = new BigInteger(1, messageDigest);
@@ -67,67 +77,32 @@ public class Node{
     }
 
 
-    public void calculateKeys() throws NoSuchAlgorithmException {
-        // calculate each of the Brokers hash value
+    public static void calculateKeys() throws NoSuchAlgorithmException {
+        loadBrokers();
+        readTopicsList();
         hashOfBrokers();
-        // calculate TopicsHash
         HashMap<String, Long> topicHashes = calculateTopicHash();
-        List<Topic> copyTopics = new ArrayList<>();
-        for (Topic t : topicsList) {
-            copyTopics.add(t);
-        }
-        // compare topic hashes and broker hash value
-        if (!topicHashes.isEmpty()) {
-            ArrayList<Long> allBrokHash = allBrokerHash();
-            if (allBrokHash != null) {
-                // iterate the list of the values of the brokers' hash
-                for (int i = 0; i < allBrokHash.size(); i++) {
-                    for (Topic t : topicsList) {
-                        if (copyTopics.indexOf(t) > -1) {
-                            long h = topicHashes.get(t.getChannelName());
-                            int s = allBrokHash.size() - 1;
 
-                            if (i == 0) {
-                                if ((h < allBrokHash.get(i)) || (h >= allBrokHash.get(s))) {
-                                    for (Broker b : brokers) {
-                                        if (b.getbHashValue() == allBrokHash.get(i)) {
-                                            b.linkedTopics.add(t);
-                                            int index = copyTopics.indexOf(t);
-                                            copyTopics.remove(index);
-                                        }
-                                    }
-                                }
-                            } else if (h < allBrokHash.get(i) && h >= allBrokHash.get(i - 1)) {
-                                for (Broker b : brokers) {
-                                    if (b.getbHashValue() == allBrokHash.get(i)) {
-                                        b.linkedTopics.add(t);
-                                        int index = copyTopics.indexOf(t);
-                                        copyTopics.remove(index);
-                                    }
-                                }
-                            } else
-                                continue;
-                        }
-                    }
+
+        for (Topic c : topicsList) {
+            boolean flag = false;
+            for(Broker b: brokers){
+                if(c.hashCode() >= b.hashCode()){
+                    continue;
                 }
+                b.linkedTopics.add(c);
+                flag = true;
+            }
+            if(!flag){
+                brokers.get(0).linkedTopics.add(c);
             }
         }
-        for (Broker b : brokers) {
-            // System.out.println(b.getName()+" "+b.getHash());
-            HashMap<Topic, ArrayList<Queue<Value>>> q = new HashMap<>();
-            for (Topic t : b.linkedTopics) {  //b.getlinkedTopics()
-                // System.out.println(t.getBusLine());
-                ArrayList<Queue<Value>> val = new ArrayList<>();
-                ;
-                q.put(t, val);
-            }
-            b.settopicsQueue(q);
-        }
+
 
     }
 
     // returns list of brokers' hash
-    private ArrayList<Long> allBrokerHash() {
+    private static ArrayList<Long> allBrokerHash() {
         ArrayList<Long> allBrokHash = new ArrayList<>();
         if (!brokers.isEmpty()) {
             for (Broker b : brokers) {
@@ -141,7 +116,7 @@ public class Node{
     }
 
 
-    private HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
+    private static HashMap<String, Long> calculateTopicHash() throws NoSuchAlgorithmException {
 
         HashMap<String, Long> topicHashes = new HashMap<>();
         for (Topic t : topicsList) {
@@ -166,51 +141,55 @@ public class Node{
         return this.topicsList;
     }
 
-    public static void main(String[] args) throws IOException {
-
+    public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
+        calculateKeys();
         // Vector to store active clients
 
 
         // counter for clients
-            int i = 0;
-            // server is listening on port 1234
-            serverSocket = new ServerSocket(1234);
+        int i = 0;
+        // server is listening on port 1234
+        serverSocket = new ServerSocket(1234);
 
-            Socket s;
+        Socket s;
 
-            // running infinite loop for getting
-            // client request
-            while (true)
-            {
-                // Accept the incoming request
-                s = serverSocket.accept();
+        // running infinite loop for getting
+        // client request
+        while (true)
+        {
+            // Accept the incoming request
+            s = serverSocket.accept();
 
-                System.out.println("New client request received : " + s);
 
-                // obtain input and output streams
-                DataInputStream dis = new DataInputStream(s.getInputStream());
-                DataOutputStream dos = new DataOutputStream(s.getOutputStream());
+            System.out.println("New client request received : " + s);
 
-                System.out.println("Creating a new handler for this client...");
+            // obtain input and output streams
+            DataInputStream dis = new DataInputStream(s.getInputStream());
+            DataOutputStream dos = new DataOutputStream(s.getOutputStream());
+            String username = dis.readUTF();
+            subject = dis.readUTF();
+            System.out.println("connected to subject: " + subject);
 
-                // Create a new handler object for handling this request.
-                ClientHandler mtch = new ClientHandler(s,"client " + i, dis, dos);
+            System.out.println("Creating a new handler for this client...");
 
-                // Create a new Thread with this object.
-                Thread t = new Thread(mtch);
+            // Create a new handler object for handling this request.
+            ClientHandler mtch = new ClientHandler(s,username, subject, dis, dos);
 
-                System.out.println("Adding this client to active client list");
+            // Create a new Thread with this object.
+            Thread t = new Thread(mtch);
 
-                // add this client to active clients list
-                ar.add(mtch);
+            System.out.println("Adding this client to active client list");
 
-                // start the thread.
-                t.start();
+            // add this client to active clients list
+            ar.add(mtch);
 
-                // increment i for new client.
-                // i is used for naming only, and can be replaced
-                // by any naming scheme
-                i++;
+            // start the thread.
+            t.start();
+
+            // increment i for new client.
+            // i is used for naming only, and can be replaced
+            // by any naming scheme
+            i++;
 
 
         }
@@ -223,113 +202,129 @@ public class Node{
 
 
     // ClientHandler class
-static class ClientHandler implements Runnable
-{
-    Scanner scn = new Scanner(System.in);
-    private String name;
-    final DataInputStream dis;
-    final DataOutputStream dos;
-    Socket s;
-    boolean isloggedin;
+    static class ClientHandler implements Runnable
+    {
+        Scanner scn = new Scanner(System.in);
+        private String name;
+        final DataInputStream dis;
+        final DataOutputStream dos;
+        Socket s;
+        boolean isloggedin;
+        Broker broker;
 
-    // constructor
-    public ClientHandler(Socket s, String name,
-                         DataInputStream dis, DataOutputStream dos) {
-        this.dis = dis;
-        this.dos = dos;
-        this.name = name;
-        this.s = s;
-        this.isloggedin=true;
-    }
+        // constructor
+        public ClientHandler(Socket s, String name, String subject,
+                             DataInputStream dis, DataOutputStream dos) {
+            this.dis = dis;
+            this.dos = dos;
+            this.name = name;
 
-    @Override
-    public void run() {
+            this.s = s;
+            this.isloggedin=true;
+            boolean brokFound = false;
+            for(Broker br: brokers){
+                if(brokFound)
+                        break;
+                for(Topic c: br.linkedTopics){
 
-        String received;
-        while (true)
-        {
-            try {
-                String type = dis.readUTF();
+                    if(c.getChannelName().equals(subject)){
+                        broker = br;
+                        brokFound = true;
+                        break;
+                    }
+                }
+            }
 
-                if (type.equals("1")) {
+        }
 
-                    int fileNameLength = dis.readInt();
+        @Override
+        public void run() {
 
-                    if (fileNameLength > 0) {
-                        byte[] fileNameBytes = new byte[fileNameLength];
-                        dis.readFully(fileNameBytes, 0, fileNameBytes.length);
-                        String fileName = new String(fileNameBytes);
+            String received;
+            while (true)
+            {
+                try {
+                    String type = dis.readUTF();
 
-                        int fileContentLength = dis.readInt();
+                    if (type.equals("1")) {
 
-                        if (fileContentLength > 0) {
-                            byte[] fileContentBytes = new byte[fileContentLength];
-                            dis.readFully(fileContentBytes, 0, fileContentLength);
-                            File fileToDownload = new File("C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\mediaFile\\marias_wedding.mp4");
-                            try {
-                                FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
-                                fileOutputStream.write(fileContentBytes);
-                                fileOutputStream.close();
-                            } catch (IOException error) {
-                                error.printStackTrace();
+                        int fileNameLength = dis.readInt();
+
+                        if (fileNameLength > 0) {
+                            byte[] fileNameBytes = new byte[fileNameLength];
+                            dis.readFully(fileNameBytes, 0, fileNameBytes.length);
+                            String fileName = new String(fileNameBytes);
+
+                            int fileContentLength = dis.readInt();
+
+                            if (fileContentLength > 0) {
+                                byte[] fileContentBytes = new byte[fileContentLength];
+                                dis.readFully(fileContentBytes, 0, fileContentLength);
+                                File fileToDownload = new File("C:\\Users\\Cosmic Travellers\\Desktop\\downloads\\logo_new.jpg");
+                                try {
+                                    FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
+                                    fileOutputStream.write(fileContentBytes);
+                                    fileOutputStream.close();
+                                } catch (IOException error) {
+                                    error.printStackTrace();
+                                }
+                            }
+                            for (ClientHandler mc : ar) {
+                                // if the recipient is found, write on its
+                                // output stream
+                                if (mc.isloggedin == true) {
+                                    mc.dos.writeUTF(this.name + " : " + fileName);
+                                    break;
+                                }
                             }
                         }
+
+
+                    } else if (type.equals("2")) {
+
+
+                        // receive the string
+                        received = dis.readUTF();
+
+                        System.out.println(received);
+
+                        if (received.equals("logout")) {
+                            this.isloggedin = false;
+                            this.s.close();
+                            break;
+                        }
+
+                        // break the string into message and recipient part
+                        StringTokenizer st = new StringTokenizer(received, "#");
+                        String MsgToSend = st.nextToken();
+                        String recipient = st.nextToken();
+
+                        // search for the recipient in the connected devices list.
+                        // ar is the vector storing client of active users
                         for (ClientHandler mc : ar) {
                             // if the recipient is found, write on its
                             // output stream
-                            if (mc.isloggedin == true) {
-                                mc.dos.writeUTF(this.name + " : " + fileName);
+                            if (mc.name.equals(recipient) && mc.isloggedin == true) {
+                                mc.dos.writeUTF(this.name + " : " + MsgToSend);
                                 break;
                             }
                         }
                     }
-
-
-                } else if (type.equals("2")) {
-
-
-                    // receive the string
-                    received = dis.readUTF();
-
-                    System.out.println(received);
-
-                    if (received.equals("logout")) {
-                        this.isloggedin = false;
-                        this.s.close();
-                        break;
-                    }
-
-                    // break the string into message and recipient part
-                    StringTokenizer st = new StringTokenizer(received, "#");
-                    String MsgToSend = st.nextToken();
-                    String recipient = st.nextToken();
-
-                    // search for the recipient in the connected devices list.
-                    // ar is the vector storing client of active users
-                    for (ClientHandler mc : ar) {
-                        // if the recipient is found, write on its
-                        // output stream
-                        if (mc.name.equals(recipient) && mc.isloggedin == true) {
-                            mc.dos.writeUTF(this.name + " : " + MsgToSend);
-                            break;
-                        }
-                    }
-                }
                 } catch(IOException e){
 
                     e.printStackTrace();
                 }
 
-        }
-        try
-        {
-            // closing resources
-            this.dis.close();
-            this.dos.close();
+            }
+            try
+            {
+                // closing resources
+                this.dis.close();
+                this.dos.close();
 
-        }catch(IOException e){
-            e.printStackTrace();
+            }catch(IOException e){
+                e.printStackTrace();
+            }
         }
     }
-}
 }

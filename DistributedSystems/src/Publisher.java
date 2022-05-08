@@ -9,7 +9,7 @@ import java.util.*;
 
 //User profile
 public class Publisher implements Runnable {
-    //Socket client;
+    // Socket client;
     static String username;
     ProfileName profileName;
     private DatagramSocket datagramSocket;
@@ -17,41 +17,39 @@ public class Publisher implements Runnable {
     private byte[] buffer;
     private List<Topic> pubTopicList;
     private List<Broker> connectedBrokers;
-    //private String ipAddress = "127.0.0.1"; // must be taken dynamically so hash code can work correctly
-    //private int port = 1234; // must be taken dynamically so hush code can work correctly
+    // private String ipAddress = "127.0.0.1"; // must be taken dynamically so hash
+    // code can work correctly
+    // private int port = 1234; // must be taken dynamically so hush code can work
+    // correctly
     private HashMap<ProfileName, AbstractMap.SimpleEntry<String, Value>> queueOfTopics;
-
 
     private static File currDirectory = new File(new File("").getAbsolutePath());
     private static String topicsPath = currDirectory + "\\distributed_systems\\DistributedSystems\\data\\Topics.txt";
 
+    public static void main(String[] args) {
 
-     public static void main(String[] args) {
+        System.out.println("Please enter your name:");
+        Scanner scanner = new Scanner(System.in);
+        username = scanner.nextLine();
+        Publisher publisher = new Publisher(new ProfileName(username));
 
-         System.out.println("Please enter your name:");
-         Scanner scanner = new Scanner(System.in);
-         username = scanner.nextLine();
-         Publisher publisher = new Publisher(new ProfileName(username));
+        System.out.println("Select a topic");
+        Scanner myTopic = new Scanner(System.in);
+        String subject = myTopic.nextLine();
+        ArrayList<Topic> topics = Node.readTopicsList();
 
-         System.out.println("Select a topic");
-         Scanner myTopic = new Scanner(System.in);
-         String subject = myTopic.nextLine();
-         ArrayList<Topic> topics = Node.readTopicsList();
+        for (Topic topic : topics) {
+            if (topic.getChannelName().equals(subject)) {
 
-         for (Topic topic : topics) {
-             if (topic.getChannelName().equals(subject)) {
+                System.out.println("1. Upload file. \n 2. Write text.");
+                String type = scanner.nextLine();
 
-                 System.out.println("1. Upload file. \n 2. Write text.");
-                 String type = scanner.nextLine();
+                publisher.push(subject, type);
+                break;
+            }
+        }
 
-                 publisher.push(subject, type);
-                 break;
-             }
-         }
-
-
-      }
-
+    }
 
     public Publisher() {
 
@@ -100,9 +98,6 @@ public class Publisher implements Runnable {
     // ALLOW only one thread to execute this block at any given time
     public synchronized void push(String subject, String type) {
 
-
-
-
         try {
             Socket client = new Socket("127.0.0.1", 1234);
             DataInputStream dis = new DataInputStream(client.getInputStream());
@@ -112,44 +107,45 @@ public class Publisher implements Runnable {
             Thread sendMessage = new Thread(new Runnable() {
                 @Override
                 public void run() {
-
                     while (true) {
-                        switch (type) {
-                            case "1":
-                                try {
-                                    dos.writeUTF("1");
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                                upload(client);
-                                break;
-                            case "2":
-                                Scanner scn =new Scanner(System.in);
-                                // read the message to deliver.
-                                String msg = scn.nextLine();
+                        Scanner scn = new Scanner(System.in);
+                        // read the message to deliver.
+                        String msg = scn.nextLine();
+                        if (msg.equals("1") || msg.equals("2")) {
+                            switch (type) {
+                                case "1":
+                                    try {
+                                        dos.writeUTF("1");
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                    upload(client);
+                                    break;
+                                case "2":
+                                    msg = scn.nextLine();
+                                    try {
+                                        // write on the output stream
+                                        dos.writeUTF("2");
+                                        dos.writeUTF(username + "#" + msg);
 
-                                try {
-                                    // write on the output stream
-                                    dos.writeUTF("2");
-                                    dos.writeUTF(username+ "#" + msg);
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                                break;
-                            default:
-                                System.out.println("You must select either 1 or 2");
-                                break;
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                    break;
+                                default:
+                                    System.out.println("You must select either 1 or 2");
+                                    break;
+                            }
                         }
 
                     }
                 }
             });
 
-    sendMessage.start();
+            sendMessage.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
-
 
     }
 
@@ -163,58 +159,56 @@ public class Publisher implements Runnable {
         this.pubTopicList = n.readTopicsList();
     }
 
+    public void upload(Socket client) {
+        try {
+            /*
+             * String contents[] = currDirectory.list();
+             * for (String name : contents) {
+             * System.out.println(name);
+             * }
+             * System.out.println("Write the name of the file you want to upload.");
+             * 
+             * Scanner in = new Scanner(System.in);
+             * String fileName = in.nextLine();
+             * 
+             * Value value = new Value(new MultimediaFile(fileName));
+             */
+            FileInputStream fileInputStream = new FileInputStream(
+                    "C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\ΚΑΤΑΝΕΜΗΜΕΝΑ\\Red_Kitten_01.jpg");
+            File file = new File(
+                    "C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\ΚΑΤΑΝΕΜΗΜΕΝΑ\\Red_Kitten_01.jpg");
 
-        public void upload(Socket client) {
-            try {
-                /*
-                String contents[] = currDirectory.list();
-                for (String name : contents) {
-                    System.out.println(name);
-                }
-                System.out.println("Write the name of the file you want to upload.");
+            DataOutputStream dataOutputStream = new DataOutputStream(client.getOutputStream());
+            String filename = "marias_wedding.mp4";
+            byte[] fileNameBytes = filename.getBytes(); // StandardCharsets.UTF_8
 
-                Scanner in = new Scanner(System.in);
-                String fileName = in.nextLine();
+            byte[] fileContentBytes = new byte[(int) file.length()];
 
-                Value value = new Value(new MultimediaFile(fileName));
-                */
-                FileInputStream fileInputStream = new FileInputStream(
-                        "C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\ΚΑΤΑΝΕΜΗΜΕΝΑ\\Red_Kitten_01.jpg");
-                File file = new File(
-                        "C:\\Users\\Pelagia\\OneDrive - aueb.gr\\Desktop\\ΚΑΤΑΝΕΜΗΜΕΝΑ\\Red_Kitten_01.jpg");
+            fileInputStream.read(fileContentBytes); // , 0, fileContentBytes.length);
 
-                DataOutputStream dataOutputStream = new DataOutputStream(client.getOutputStream());
-                String filename = "marias_wedding.mp4";
-                byte[] fileNameBytes = filename.getBytes(); // StandardCharsets.UTF_8
+            dataOutputStream.writeInt(fileNameBytes.length);
+            dataOutputStream.write(fileNameBytes);
 
-                byte[] fileContentBytes = new byte[(int) file.length()];
+            dataOutputStream.writeInt(fileContentBytes.length);
+            dataOutputStream.write(fileContentBytes);
 
-                fileInputStream.read(fileContentBytes); // , 0, fileContentBytes.length);
+            dataOutputStream.flush();
 
-                dataOutputStream.writeInt(fileNameBytes.length);
-                dataOutputStream.write(fileNameBytes);
-
-                dataOutputStream.writeInt(fileContentBytes.length);
-                dataOutputStream.write(fileContentBytes);
-
-                dataOutputStream.flush();
-
-                /*
-                 * Sending messages
-                 * //out = new ObjectOutputStream(connection.getOutputStream());
-                 * //in = new ObjectInputStream(connection.getInputStream());
-                 * BufferedReader inReader = new BufferedReader(new
-                 * InputStreamReader(System.in));
-                 * while (true)
-                 * {
-                 * String message = inReader.readLine();
-                 * System.out.println(message);
-                 * }
-                 */
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            /*
+             * Sending messages
+             * //out = new ObjectOutputStream(connection.getOutputStream());
+             * //in = new ObjectInputStream(connection.getInputStream());
+             * BufferedReader inReader = new BufferedReader(new
+             * InputStreamReader(System.in));
+             * while (true)
+             * {
+             * String message = inReader.readLine();
+             * System.out.println(message);
+             * }
+             */
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-
+    }
 
 }

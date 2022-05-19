@@ -20,17 +20,12 @@ public class Broker {
     static List<Publisher> enrolledPublishers = new ArrayList<Publisher>();
     String topic;
 
-    // brokers list must be static because they are the same, no matter the instance
-    private static List<Broker> allBrokers;
     private String name, ip;
     private int port;
-    private long hashValue;
     ServerSocket serverSocket;
     Socket client;
     List<Topic> linkedTopics = new ArrayList<Topic>();; // hashmap == queue
     public HashMap<Topic, Queue<String>> topicsQueue = new HashMap<>();
-
-    private static List<Topic> allTopics; // all topics of all brokers
 
     public Broker() {
     }
@@ -43,10 +38,7 @@ public class Broker {
     }
 
     public synchronized void init() {
-        Node n = new Node();
         // n.readRouteCodes();
-        allBrokers = n.loadBrokers();
-        allTopics = n.gettopicsList();
         // setTopics(n);
         // setPubOwnTopics(this.name);
         // settopicsQueue(n);
@@ -127,7 +119,6 @@ public class Broker {
             Socket client1 = new Socket("127.0.0.1", 4321);
             // ServerSocket serverSocket = new ServerSocket(port);
             // BrokerHandler handler = new BrokerHandler(client1);
-            br.pull("Hello");
             // Thread t = new Thread(handler);
             // t.start();
         } catch (IOException e) {
@@ -136,10 +127,6 @@ public class Broker {
         // Thread t = new Thread(br);
         // t.start();
         // }
-    }
-
-    void pull(String brokerName) {
-
     }
 
     public void closeBroker() {
@@ -156,10 +143,6 @@ public class Broker {
         return this.linkedTopics;
     }
 
-    public List<Topic> getallTopics() {
-        return allTopics;
-    }
-
     public int getPort() {
         return this.port;
     }
@@ -172,20 +155,8 @@ public class Broker {
         this.ip = ip;
     }
 
-    public List<Broker> getAllBrokers() {
-        return allBrokers;
-    }
-
     public String getBrokerName() {
         return this.name;
-    }
-
-    public Long getHashValue() {
-        return this.hashValue;
-    }
-
-    public void setHashValue(Long h) {
-        this.hashValue = h;
     }
 
     @Override

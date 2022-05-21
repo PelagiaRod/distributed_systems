@@ -5,11 +5,12 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
@@ -22,46 +23,50 @@ import models.Value;
 //User profile
 public class Publisher implements Runnable {
     // Socket client;
-    static String username;
+    String username;
     ProfileName profileName;
     private List<Broker> connectedBrokers;
 
     private HashMap<ProfileName, AbstractMap.SimpleEntry<String, Value>> queueOfTopics;
-    static Socket client;
+    private DataInputStream input;
+    private DataOutputStream output;
+    private Socket client;
+    private static String chatServer = "127.0.0.1";
+    private static File mediaDirectory = new File(new File("").getAbsolutePath() + "/data/media/");
 
-    private static File currDirectory = new File(new File("").getAbsolutePath());
-
-    public static void main(String[] args) throws IOException {
-
+    public Publisher() {
         System.out.println("Please enter your name:");
         Scanner scanner = new Scanner(System.in);
         username = scanner.nextLine();
-        Publisher publisher = new Publisher(new ProfileName(username));
+    }
 
+    public void start() throws UnknownHostException, IOException {
         System.out.println("Select a topic");
         Scanner myTopic = new Scanner(System.in);
         String subject = myTopic.nextLine();
-        ArrayList<Topic> topics = Node.loadTopics();
-
+        Node node = new Node();
+        ArrayList<Topic> topics = node.loadTopics();
         for (Topic topic : topics) {
             if (topic.getChannelName().equals(subject)) {
-
-                System.out.println("1. Upload file. \n2. Write text.");
-                String type = scanner.nextLine();
-                client = new Socket("127.0.0.1", 1234);
-                publisher.push(subject, type);
+                client = new Socket(InetAddress.getByName(chatServer), 1234);
+                input = new DataInputStream(client.getInputStream());
+                output = new DataOutputStream(client.getOutputStream());
+                push(subject);
                 break;
             }
         }
-
     }
 
-    public Publisher() {
+    private void closeConnection() {
+        System.out.println("\nClosing connection");
+        try {
+            output.close();
+            input.close();
+            client.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-    }
-
-    public Publisher(ProfileName profileName) {
-        this.profileName = profileName;
     }
 
     @Override
@@ -101,102 +106,95 @@ public class Publisher implements Runnable {
 
     // synchronized method in order to avoid a race condition and
     // ALLOW only one thread to execute this block at any given time
-    public synchronized void push(String subject, String type) {
+    public synchronized void push(String subject) {
         try {
-            // Socket client = new Socket("127.0.0.1", 1234);
-            DataInputStream dis = new DataInputStream(client.getInputStream());
-            DataOutputStream dos = new DataOutputStream(client.getOutputStream());
-            dos.writeUTF(username);
-            dos.writeUTF(subject);
-            // Scanner scn = new Scanner(System.in);
-            // read the message to deliver.
-            // String msg; // = scn.nextLine();
-            if (type.equals("1") || type.equals("2")) {
-                // sendMessage thread
-                Thread sendMessage = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
+            output.writeUTF(username);
+            output.writeUTF(subject);
 
-                        switch (type) {
-                            case "1":
-                                try {
-                                    dos.writeUTF("1");
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                                upload(client);
-                                System.out.println("Write 1 or 2");
-                                Scanner scn = new Scanner(System.in);
-                                String type = scn.nextLine();
-                                push(subject, type);
-                                break;
-                            case "2":
-                                // while (true) {
-                                scn = new Scanner(System.in);
-                                // read the message to deliver.
-                                String msg = scn.nextLine();
+            // sendMessage thread
+            Thread sendMessage = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    System.out.println("1. Upload file. \n2. Write text.");
+                    Scanner scanner = new Scanner(System.in);
+                    String type = scanner.nextLine();
+                    switch (type) {
+                        case "1":
+                            try {
+                                output.writeUTF("1");
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            upload();
+                            push(subject);
+                            break;
+                        case "2":
+                            // while (true) {
+                            // read the message to deliver.
+                            String msg = scanner.nextLine();
 
-                                try {
-                                    // write on the output stream
-                                    dos.writeUTF("2");
-                                    dos.writeUTF(username + "#" + msg);
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                                // }
-                                System.out.println("Write 1 or 2");
-                                type = scn.nextLine();
-                                push(subject, type);
-                                break;
+                            try {
+                                // write on the output stream
+                                output.writeUTF("2");
+                                output.writeUTF(username + "#" + msg);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            // }
+                            push(subject);
+                            break;
 
-                            default:
-                                System.out.println("You must select either 1 or 2");
-                                break;
-                        }
+                        default:
+                            System.out.println("You must select either 1 or 2");
+                            break;
                     }
+                }
 
-                });
+            });
 
-                sendMessage.start();
-            }
+            sendMessage.start();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
 
-    public void upload(Socket client) {
+    public void upload() {
         try {
-            /*
-             * String contents[] = currDirectory.list();
-             * for (String name : contents) {
-             * System.out.println(name);
-             * }
-             * System.out.println("Write the name of the file you want to upload.");
-             * 
-             * Scanner in = new Scanner(System.in);
-             * String fileName = in.nextLine();
-             * 
-             * Value value = new Value(new MultimediaFile(fileName));
-             */
-            FileInputStream fileInputStream = new FileInputStream(currDirectory + "\\data\\monilinia.jpg");
-            File file = new File(currDirectory + "\\data\\monilinia.jpg");
+            String contents[] = mediaDirectory.list();
+            for (String name : contents) {
+                System.out.println(name);
+            }
+            System.out.println("Write the name of the file you want to upload.");
+            Scanner in = new Scanner(System.in);
+            String fileName = in.nextLine();
+            while (true) {
+                if (!Arrays.asList(contents).contains(fileName)) {
+                    System.out.println("File not found. Please try again.");
+                    fileName = in.nextLine();
+                } else {
+                    break;
+                }
+            }
+            // Value value = new Value(new MultimediaFile(fileName));
 
-            DataOutputStream dataOutputStream = new DataOutputStream(client.getOutputStream());
-            String filename = "monilinia.jpg";
-            byte[] fileNameBytes = filename.getBytes(); // StandardCharsets.UTF_8
+            FileInputStream fileInputStream = new FileInputStream(mediaDirectory + "\\" + fileName);
+            File file = new File(mediaDirectory + "\\" + fileName);
+
+            byte[] fileNameBytes = fileName.getBytes(); // StandardCharsets.UTF_8
 
             byte[] fileContentBytes = new byte[(int) file.length()];
 
             fileInputStream.read(fileContentBytes); // , 0, fileContentBytes.length);
 
-            dataOutputStream.writeInt(fileNameBytes.length);
-            dataOutputStream.write(fileNameBytes);
+            output.writeInt(fileNameBytes.length);
+            output.write(fileNameBytes);
 
-            dataOutputStream.writeInt(fileContentBytes.length);
-            dataOutputStream.write(fileContentBytes);
+            output.writeInt(fileContentBytes.length);
+            output.write(fileContentBytes);
 
-            dataOutputStream.flush();
+            output.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }

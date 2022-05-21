@@ -9,21 +9,16 @@ import models.Topic;
 
 public class Node {
 
-    static List<Broker> brokers = new ArrayList<>();
-    Broker broker = new Broker();
-    static ServerSocket serverSocket;
+    Broker broker;
+    ServerSocket serverSocket;
     Socket client;
     int num;
-    static String subject;
-    static String ip;
-    static int port;
+    String subject;
     String brokerName;
-    private static ArrayList<Topic> topicsList = new ArrayList<>();
-    Publisher publisher = new Publisher();
-    static Vector<ClientHandler> ar = new Vector<>();
-    // private HashMap<String, String> topicsQueue;
+    Vector<ClientHandler> clients;
+    static List<Broker> brokers;
     private HashMap<ClientHandler, ArrayList<String>> userMessQueue;
-
+    private static ArrayList<Topic> topicsList;
     private static File currDirectory = new File(new File("").getAbsolutePath());
     private static String topicsPath = currDirectory + "\\data\\Topics.txt";
     private static String brokersPath = currDirectory
@@ -31,6 +26,13 @@ public class Node {
 
     public ArrayList<Topic> gettopicsList() {
         return topicsList;
+    }
+
+    public Node() {
+        broker = new Broker();
+        clients = new Vector<>();
+        brokers = new ArrayList<>();
+        topicsList = new ArrayList<>();
     }
 
     public static ArrayList<Topic> loadTopics() {
@@ -71,18 +73,16 @@ public class Node {
 
     }
 
-    public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
+    public void start() throws NoSuchAlgorithmException, IOException {
         calculateKeys();
-
         // server is listening on port 1234
+
         serverSocket = new ServerSocket(1234);
 
         // running infinite loop for getting
         // client request
         while (!serverSocket.isClosed()) {
-            // Accept the incoming request
             Socket socket = serverSocket.accept();
-
             System.out.println("New client request received : " + socket);
             // obtain input and output streams
             DataInputStream dis = new DataInputStream(socket.getInputStream());
@@ -102,7 +102,7 @@ public class Node {
             Thread t = new Thread(mtch);
 
             // add this client to active clients list
-            ar.add(mtch);
+            clients.add(mtch);
 
             // start the thread.
             t.start();
@@ -111,7 +111,7 @@ public class Node {
     }
 
     // ClientHandler class
-    static class ClientHandler implements Runnable {
+    class ClientHandler implements Runnable {
         Scanner scn = new Scanner(System.in);
         private String name;
         final DataInputStream dis;
@@ -176,7 +176,7 @@ public class Node {
                             if (fileContentLength > 0) {
                                 byte[] fileContentBytes = new byte[fileContentLength];
                                 dis.readFully(fileContentBytes, 0, fileContentLength);
-                                File fileToDownload = new File(currDirectory + "\\data\\monilinia.jpg");
+                                File fileToDownload = new File(currDirectory + "\\data\\media\\monilinia.jpg");
                                 try {
                                     FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
                                     fileOutputStream.write(fileContentBytes);
@@ -185,7 +185,7 @@ public class Node {
                                     error.printStackTrace();
                                 }
                             }
-                            for (ClientHandler mc : ar) {
+                            for (ClientHandler mc : clients) {
                                 // if the recipient is found, write on its
                                 // output stream
                                 if (mc.isloggedin == true) {
@@ -219,8 +219,8 @@ public class Node {
                         String MsgToSend = st.nextToken();
 
                         // search for the recipient in the connected devices list.
-                        // ar is the vector storing client of active users
-                        for (ClientHandler mc : ar) {
+                        // clients is the vector storing client of active users
+                        for (ClientHandler mc : clients) {
                             // if the recipient is found, write on its
                             // output stream
                             if (mc.isloggedin == true) {

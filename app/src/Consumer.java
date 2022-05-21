@@ -1,7 +1,9 @@
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -12,10 +14,16 @@ import models.Value;
 //subscriber service
 public class Consumer implements Runnable {
     ProfileName subscriber;
-    static Socket client;
     static String username;
+    private DataInputStream input;
+    private DataOutputStream output;
+    private Socket client;
+    private static String chatServer = "127.0.0.1";
 
     public Consumer() {
+        System.out.println("Please enter your name:");
+        Scanner scanner = new Scanner(System.in);
+        username = scanner.nextLine();
     }
 
     public Consumer(ProfileName subscriber) {
@@ -38,31 +46,27 @@ public class Consumer implements Runnable {
 
     }
 
-    public static void main(String[] args) throws IOException {
-        System.out.println("Please enter your name:");
-        Scanner scanner = new Scanner(System.in);
-        username = scanner.nextLine();
+    public void start() throws UnknownHostException, IOException {
         System.out.println("Select a topic");
         Scanner myTopic = new Scanner(System.in);
         String subject = myTopic.nextLine();
-        ArrayList<Topic> topics = Node.loadTopics();
-
+        Node node = new Node();
+        ArrayList<Topic> topics = node.loadTopics();
         for (Topic topic : topics) {
             if (topic.getChannelName().equals(subject)) {
-                client = new Socket("127.0.0.1", 1234);
+                client = new Socket(InetAddress.getByName(chatServer), 1234);
+                input = new DataInputStream(client.getInputStream());
+                output = new DataOutputStream(client.getOutputStream());
                 pull(subject);
                 break;
             }
         }
-
     }
 
-    public static synchronized void pull(String subject) throws IOException {
+    public synchronized void pull(String subject) throws IOException {
         // readMessage thread
-        DataInputStream dis = new DataInputStream(client.getInputStream());
-        DataOutputStream dos = new DataOutputStream(client.getOutputStream());
-        dos.writeUTF(username);
-        dos.writeUTF(subject);
+        output.writeUTF(username);
+        output.writeUTF(subject);
 
         Thread readMessage = new Thread(new Runnable() {
             @Override
@@ -70,9 +74,8 @@ public class Consumer implements Runnable {
 
                 while (true) {
                     try {
-
                         // read the message sent to this client
-                        String msg = dis.readUTF();
+                        String msg = input.readUTF();
                         System.out.println(msg);
                     } catch (IOException e) {
 

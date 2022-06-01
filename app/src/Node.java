@@ -176,7 +176,11 @@ public class Node {
                             if (fileContentLength > 0) {
                                 byte[] fileContentBytes = new byte[fileContentLength];
                                 dis.readFully(fileContentBytes, 0, fileContentLength);
-                                File fileToDownload = new File(currDirectory + "\\data\\media\\monilinia.jpg");
+                                File directory = new File(currDirectory + "\\data\\downloads");
+                                if (!directory.exists())
+                                    directory.mkdir();
+
+                                File fileToDownload = new File(currDirectory + "\\data\\downloads\\" + fileName);
                                 try {
                                     FileOutputStream fileOutputStream = new FileOutputStream(fileToDownload);
                                     fileOutputStream.write(fileContentBytes);

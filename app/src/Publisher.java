@@ -184,16 +184,17 @@ public class Publisher implements Runnable {
 
             byte[] fileNameBytes = fileName.getBytes(); // StandardCharsets.UTF_8
 
-            byte[] fileContentBytes = new byte[(int) file.length()];
-
-            fileInputStream.read(fileContentBytes); // , 0, fileContentBytes.length);
-
+            int count;
             output.writeInt(fileNameBytes.length);
             output.write(fileNameBytes);
 
+            byte[] fileContentBytes = new byte[(int) file.length()];
             output.writeInt(fileContentBytes.length);
-            output.write(fileContentBytes);
 
+            // break in chunks and send file
+            while ((count = fileInputStream.read(fileContentBytes)) > 0) {
+                output.write(fileContentBytes, 0, count);
+            }
             output.flush();
         } catch (IOException e) {
             e.printStackTrace();

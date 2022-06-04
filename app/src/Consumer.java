@@ -21,7 +21,7 @@ public class Consumer implements Runnable {
     private static String chatServer = "127.0.0.1";
 
     public Consumer() {
-        System.out.println("Please enter your name:");
+        System.out.print("Please enter your name : ");
         Scanner scanner = new Scanner(System.in);
         username = scanner.nextLine();
     }
@@ -46,12 +46,17 @@ public class Consumer implements Runnable {
 
     }
 
+    // TODO CONNECT TO FIRST RANDOM BROKER AND BROKER SEND BROKERS LIST WITH TOPICS
+    // AND SELECT THE RIGHT BROKER TO CONNECT
     public void start() throws UnknownHostException, IOException {
-        System.out.println("Select a topic");
+        System.out.println("--Topics--");
+        ArrayList<Topic> topics = LoadData.loadTopics();
+        for (Topic topic : topics) {
+            System.out.println(topic.getChannelName());
+        }
+        System.out.print("Select a topic : ");
         Scanner myTopic = new Scanner(System.in);
         String subject = myTopic.nextLine();
-        Node node = new Node();
-        ArrayList<Topic> topics = node.loadTopics();
         for (Topic topic : topics) {
             if (topic.getChannelName().equals(subject)) {
                 client = new Socket(InetAddress.getByName(chatServer), 1234);

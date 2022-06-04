@@ -25,7 +25,7 @@ public class Publisher implements Runnable {
     // Socket client;
     String username;
     ProfileName profileName;
-    private List<Broker> connectedBrokers;
+    private List<OldBroker> connectedBrokers;
 
     private HashMap<ProfileName, AbstractMap.SimpleEntry<String, Value>> queueOfTopics;
     private DataInputStream input;
@@ -35,17 +35,22 @@ public class Publisher implements Runnable {
     private static File mediaDirectory = new File(new File("").getAbsolutePath() + "/data/media/");
 
     public Publisher() {
-        System.out.println("Please enter your name:");
+        System.out.print("Please enter your name : ");
         Scanner scanner = new Scanner(System.in);
         username = scanner.nextLine();
     }
 
+    // TODO CONNECT TO RIGHT BROKER
+    // AND PUSH DATA TO BROKER`S QUEUE
     public void start() throws UnknownHostException, IOException {
-        System.out.println("Select a topic");
+        System.out.println("--Topics--");
+        ArrayList<Topic> topics = LoadData.loadTopics();
+        for (Topic topic : topics) {
+            System.out.println(topic.getChannelName());
+        }
+        System.out.print("Select a topic : ");
         Scanner myTopic = new Scanner(System.in);
         String subject = myTopic.nextLine();
-        Node node = new Node();
-        ArrayList<Topic> topics = node.loadTopics();
         for (Topic topic : topics) {
             if (topic.getChannelName().equals(subject)) {
                 client = new Socket(InetAddress.getByName(chatServer), 1234);
@@ -79,28 +84,28 @@ public class Publisher implements Runnable {
         return chunks;
     }
 
-    public List<Broker> getBrokerList() {
+    public List<OldBroker> getBrokerList() {
         return this.connectedBrokers;
     }
 
     // TODO
-    void hashTopic(String topic) {
-        Node nd = new Node();
-        // Broker broker = new Broker();
-        for (Broker brok : nd.brokers) {
-            if (this.profileName.getUserVideoFilesMap().containsValue(topic))
+    // void hashTopic(String topic) {
+    // Broker nd = new Broker();
+    // // Broker broker = new Broker();
+    // for (NodeNew brok : nd.brokers) {
+    // if (this.profileName.getUserVideoFilesMap().containsValue(topic))
 
-            {
+    // {
 
-            }
-        }
-    }
+    // }
+    // }
+    // }
 
     void notifyBrokersNewMessage(String message) {
 
     }
 
-    void notifyFailure(Broker fail) {
+    void notifyFailure(OldBroker fail) {
 
     }
 

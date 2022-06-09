@@ -21,12 +21,12 @@ import models.Topic;
 import models.Value;
 
 //User profile
-public class Publisher implements Runnable {
+public class Publisher extends Node implements Runnable {
     // Socket client;
     String username;
     ProfileName profileName;
     private List<OldBroker> connectedBrokers;
-
+    private static Boolean flag = true;
     private HashMap<ProfileName, AbstractMap.SimpleEntry<String, Value>> queueOfTopics;
     private DataInputStream input;
     private DataOutputStream output;
@@ -35,6 +35,7 @@ public class Publisher implements Runnable {
     private static File mediaDirectory = new File(new File("").getAbsolutePath() + "/data/media/");
 
     public Publisher() {
+        loadTopics();
         System.out.print("Please enter your name : ");
         Scanner scanner = new Scanner(System.in);
         username = scanner.nextLine();
@@ -44,7 +45,6 @@ public class Publisher implements Runnable {
     // AND PUSH DATA TO BROKER`S QUEUE
     public void start() throws UnknownHostException, IOException {
         System.out.println("--Topics--");
-        ArrayList<Topic> topics = LoadData.loadTopics();
         for (Topic topic : topics) {
             System.out.println(topic.getChannelName());
         }
@@ -57,12 +57,14 @@ public class Publisher implements Runnable {
                 input = new DataInputStream(client.getInputStream());
                 output = new DataOutputStream(client.getOutputStream());
                 push(subject);
+                if (!flag)
+                    disconnect();
                 break;
             }
         }
     }
 
-    private void closeConnection() {
+    private void disconnect() {
         System.out.println("\nClosing connection");
         try {
             output.close();
@@ -120,38 +122,38 @@ public class Publisher implements Runnable {
             Thread sendMessage = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    System.out.println("1. Upload file. \n2. Write text.");
-                    Scanner scanner = new Scanner(System.in);
-                    String type = scanner.nextLine();
-                    switch (type) {
-                        case "1":
-                            try {
-                                output.writeUTF("1");
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                            upload();
-                            push(subject);
-                            break;
-                        case "2":
-                            // while (true) {
-                            // read the message to deliver.
-                            String msg = scanner.nextLine();
+                    while (flag) {
+                        System.out.println("1. Upload file. \n2. Write text.");
+                        Scanner scanner = new Scanner(System.in);
+                        String type = scanner.nextLine();
+                        switch (type) {
+                            case "1":
+                                try {
+                                    output.writeUTF("1");
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                                upload();
+                                break;
+                            case "2":
+                                String msg = scanner.nextLine();
 
-                            try {
-                                // write on the output stream
-                                output.writeUTF("2");
-                                output.writeUTF(username + "#" + msg);
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                            // }
-                            push(subject);
-                            break;
-
-                        default:
-                            System.out.println("You must select either 1 or 2");
-                            break;
+                                try {
+                                    // write on the output stream
+                                    output.writeUTF("2");
+                                    output.writeUTF(username + "#" + msg);
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                                break;
+                            case "exit":
+                                flag = false;
+                                break;
+                            default:
+                                System.out.println("You must select either 1 or 2");
+                                System.out.println("Or say 'exit' to close connection");
+                                break;
+                        }
                     }
                 }
 

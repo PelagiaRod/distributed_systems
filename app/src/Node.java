@@ -1,33 +1,39 @@
-
 import java.io.File;
-import java.util.ArrayList;
+import java.util.*;
 
 import helpers.FileHelper;
 import models.Topic;
 
-public final class LoadData {
+public class Node {
+    public ArrayList<Broker> brokers = new ArrayList<>();
+    public ArrayList<Topic> topics = new ArrayList<>();
     private static File currDirectory = new File(new File("").getAbsolutePath());
     private static String topicsPath = currDirectory + "\\data\\Topics.txt";
     private static String brokersPath = currDirectory + "\\data\\Brokers.txt";
 
-    public static ArrayList<Topic> loadTopics() {
-        ArrayList<Topic> topics = new ArrayList<>();
+    public void loadTopics() {
         ArrayList<String> topicsLines = FileHelper.readFile(topicsPath);
         for (String line : topicsLines) {
             topics.add(new Topic(line));
         }
-        return topics;
     }
 
-    public static ArrayList<Broker> loadBrokers() {
+    public void loadBrokers() {
         ArrayList<String> brokersLines = FileHelper.readFile(brokersPath);
-        ArrayList<Broker> brokers = new ArrayList<>();
-        System.out.println("--Brokers--");
         for (String line : brokersLines) {
-            System.out.println(line);
             String[] data = line.split(" , ");
             brokers.add(new Broker(data[0], data[1], Integer.parseInt(data[2])));
         }
-        return brokers;
     }
+
+    public void printBrokers() {
+        for (Broker line : brokers) {
+            System.out.println("name: " + line.name + ", ip: " + line.ip + ", port: " + line.port);
+        }
+    }
+
+    public Node() {
+
+    }
+
 }

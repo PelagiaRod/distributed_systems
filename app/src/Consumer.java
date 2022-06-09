@@ -12,7 +12,7 @@ import models.Topic;
 import models.Value;
 
 //subscriber service
-public class Consumer implements Runnable {
+public class Consumer extends Node implements Runnable {
     ProfileName subscriber;
     static String username;
     private DataInputStream input;
@@ -24,6 +24,7 @@ public class Consumer implements Runnable {
         System.out.print("Please enter your name : ");
         Scanner scanner = new Scanner(System.in);
         username = scanner.nextLine();
+        loadTopics();
     }
 
     public Consumer(ProfileName subscriber) {
@@ -50,7 +51,6 @@ public class Consumer implements Runnable {
     // AND SELECT THE RIGHT BROKER TO CONNECT
     public void start() throws UnknownHostException, IOException {
         System.out.println("--Topics--");
-        ArrayList<Topic> topics = LoadData.loadTopics();
         for (Topic topic : topics) {
             System.out.println(topic.getChannelName());
         }

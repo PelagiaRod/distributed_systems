@@ -6,20 +6,18 @@ import java.util.*;
 
 import models.Topic;
 
-public class Broker {
+public class Broker extends Node {
 
     ServerSocket serverSocket;
-    private String name, ip;
-    private int port;
+    String name, ip;
+    int port;
     Socket client;
     int num;
     String subject;
     String brokerName;
     Vector<ClientHandler> clients;
-    public static ArrayList<Broker> brokers = new ArrayList<>();
     public HashMap<Topic, Queue<String>> topicsQueue = new HashMap<>();
     List<Topic> linkedTopics = new ArrayList<Topic>(); // hashmap == queue
-    private static ArrayList<Topic> topics;
     private static File currDirectory = new File(new File("").getAbsolutePath());
 
     public Broker(String name, String ip, int port) {
@@ -27,14 +25,13 @@ public class Broker {
         this.ip = ip;
         this.port = port;
         clients = new Vector<>();
-        topics = new ArrayList<>();
     }
 
     // TODO NEED REFACTOR TO ADD LINKEDTOPICS TO THIS BROKER
-    public static void calculateKeys() throws NoSuchAlgorithmException {
-        brokers = LoadData.loadBrokers();
-        topics = LoadData.loadTopics();
-
+    public void calculateKeys() throws NoSuchAlgorithmException {
+        loadTopics();
+        loadBrokers();
+        // Add linkedTopics itterating to brokersList
         for (Topic c : topics) {
             boolean flag = false;
             for (Broker b : brokers) {
@@ -49,42 +46,55 @@ public class Broker {
             }
         }
 
+        // Check which broker of brokersList is this object and add to this linkedTopics
+        for (Broker broker : brokers) {
+            if (broker.equals(broker))
+                this.linkedTopics = broker.linkedTopics;
+        }
+
     }
 
     public void start() throws NoSuchAlgorithmException, IOException {
         calculateKeys();
         // server is listening on port 1234
-
         serverSocket = new ServerSocket(port);
-
+        System.out.println(name + " start and listening on port " + port);
         // running infinite loop for getting
         // client request
         while (!serverSocket.isClosed()) {
-            Socket socket = serverSocket.accept();
-            System.out.println("New client request received : " + socket);
-            // obtain input and output streams
-            DataInputStream dis = new DataInputStream(socket.getInputStream());
-            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            // Listen for input from connection
-            // Check for client disconnection
+            try {
+                Socket socket = serverSocket.accept();
+                System.out.println("New client request received : " + socket);
+                // obtain input and output streams
+                DataInputStream dis = new DataInputStream(socket.getInputStream());
+                DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                // Listen for input from connection
+                // Check for client disconnection
 
-            String username = dis.readUTF();
+                String username = dis.readUTF();
 
-            subject = dis.readUTF();
-            System.out.println("connected to subject: " + subject);
+                subject = dis.readUTF();
+                System.out.println("connected to subject: " + subject);
 
-            // Create a new handler object for handling this request.
-            ClientHandler mtch = new ClientHandler(socket, username, subject, dis, dos);
+                // Create a new handler object for handling this request.
+                ClientHandler mtch = new ClientHandler(socket, username, subject, dis, dos);
+                if (!mtch.broker.equals(this)) {
+                    dis.close();
+                    dos.close();
+                    socket.close();
+                }
+                // Create a new Thread with this object.
+                Thread t = new Thread(mtch);
 
-            // Create a new Thread with this object.
-            Thread t = new Thread(mtch);
+                // add this client to active clients list
+                clients.add(mtch);
 
-            // add this client to active clients list
-            clients.add(mtch);
-
-            // start the thread.
-            t.start();
-
+                // start the thread.
+                t.start();
+                return;
+            } catch (IOException e) {
+                throw e;
+            }
         }
     }
 
@@ -115,7 +125,6 @@ public class Broker {
                 if (brokFound)
                     break;
                 for (Topic c : br.linkedTopics) {
-
                     if (c.getChannelName().equals(subject)) {
                         broker = br;
                         brokFound = true;
@@ -230,5 +239,28 @@ public class Broker {
                 e.printStackTrace();
             }
         }
+    }
+
+    // Overriding equals() to compare two Complex objects
+    @Override
+    public boolean equals(Object o) {
+
+        // If the object is compared with itself then return true
+        if (o == this) {
+            return true;
+        }
+
+        /*
+         * Check if o is an instance of Complex or not
+         * "null instanceof [type]" also returns false
+         */
+        if (!(o instanceof Broker)) {
+            return false;
+        }
+
+        // typecast o to Complex so that we can compare data members
+        Broker b = (Broker) o;
+
+        return port == b.port && ip.equals(b.ip) && name.equals(b.name);
     }
 }

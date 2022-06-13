@@ -72,19 +72,23 @@ public class Consumer extends Node implements Runnable {
         // readMessage thread
         output.writeUTF(username);
         output.writeUTF(subject);
-
+        output.writeUTF("subscriber");
         Thread readMessage = new Thread(new Runnable() {
             @Override
             public void run() {
-
+                try {
+                    output.writeUTF("BrokersList");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 while (true) {
                     try {
                         // read the message sent to this client
                         String msg = input.readUTF();
                         System.out.println(msg);
                     } catch (IOException e) {
-
                         e.printStackTrace();
+                        return;
                     }
                 }
             }

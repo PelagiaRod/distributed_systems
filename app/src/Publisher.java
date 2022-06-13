@@ -117,6 +117,7 @@ public class Publisher extends Node implements Runnable {
         try {
             output.writeUTF(username);
             output.writeUTF(subject);
+            output.writeUTF("publisher");
 
             // sendMessage thread
             Thread sendMessage = new Thread(new Runnable() {

@@ -29,16 +29,15 @@ public class Topic implements Serializable {
         return name;
     }
 
-    @Override
-    public int hashCode() {
+    public String md5HashCode() {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] messageDigest = md.digest(this.channelName.getBytes());
-            BigInteger no = new BigInteger(1, messageDigest);
-            return no.intValue();
+            md.update(this.channelName.getBytes(), 0, this.channelName.length());
+            BigInteger no = new BigInteger(1, md.digest());
+            return no.toString();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
-            return -1;
+            return null;
         }
     }
 

@@ -159,18 +159,4 @@ public class OldBroker {
         return this.name;
     }
 
-    @Override
-    public int hashCode() {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            String ipPlusPort = this.getIp() + this.getPort();
-            byte[] messageDigest = md.digest(ipPlusPort.getBytes());
-            BigInteger no = new BigInteger(1, messageDigest);
-            return no.intValue();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return -1;
-        }
-    }
-
 }

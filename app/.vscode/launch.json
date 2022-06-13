@@ -6,6 +6,20 @@
     "configurations": [
         {
             "type": "java",
+            "name": "Launch TestPublisher",
+            "request": "launch",
+            "mainClass": "TestPublisher",
+            "projectName": "app_8af882e3"
+        },
+        {
+            "type": "java",
+            "name": "Launch TestBroker",
+            "request": "launch",
+            "mainClass": "TestBroker",
+            "projectName": "app_8af882e3"
+        },
+        {
+            "type": "java",
             "name": "Launch Current File",
             "request": "launch",
             "mainClass": "${file}"

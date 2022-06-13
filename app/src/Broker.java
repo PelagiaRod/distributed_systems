@@ -1,6 +1,8 @@
 import java.io.*;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
@@ -13,18 +15,17 @@ public class Broker extends Node {
     int port;
     Socket client;
     int num;
-    String subject;
     String brokerName;
-    Vector<ClientHandler> clients;
+    int brokerIndex;
     public HashMap<Topic, Queue<String>> topicsQueue = new HashMap<>();
     List<Topic> linkedTopics = new ArrayList<Topic>(); // hashmap == queue
     private static File currDirectory = new File(new File("").getAbsolutePath());
+    boolean isChanged = false;
 
     public Broker(String name, String ip, int port) {
         this.name = name;
         this.ip = ip;
         this.port = port;
-        clients = new Vector<>();
     }
 
     // TODO NEED REFACTOR TO ADD LINKEDTOPICS TO THIS BROKER
@@ -35,11 +36,12 @@ public class Broker extends Node {
         for (Topic c : topics) {
             boolean flag = false;
             for (Broker b : brokers) {
-                if (c.hashCode() >= b.hashCode()) {
+                if (c.md5HashCode().compareTo(b.md5HashCode()) >= 0) {
                     continue;
                 }
                 b.linkedTopics.add(c);
                 flag = true;
+                break;
             }
             if (!flag) {
                 brokers.get(0).linkedTopics.add(c);
@@ -47,9 +49,13 @@ public class Broker extends Node {
         }
 
         // Check which broker of brokersList is this object and add to this linkedTopics
-        for (Broker broker : brokers) {
-            if (broker.equals(broker))
-                this.linkedTopics = broker.linkedTopics;
+        int i = 0;
+        for (Broker br : brokers) {
+            if (br.equals(this)) {
+                this.brokerIndex = i;
+                this.linkedTopics = br.linkedTopics;
+            }
+            i++;
         }
 
     }
@@ -57,11 +63,20 @@ public class Broker extends Node {
     public void start() throws NoSuchAlgorithmException, IOException {
         calculateKeys();
         // server is listening on port 1234
+        for (Broker br : brokers) {
+            System.out.println(br.name);
+            for (Topic c : br.linkedTopics) {
+                System.out.println("#" + c.getChannelName());
+            }
+            System.out.println("---------------------");
+        }
         serverSocket = new ServerSocket(port);
         System.out.println(name + " start and listening on port " + port);
         // running infinite loop for getting
         // client request
-        while (!serverSocket.isClosed()) {
+        while (!serverSocket.isClosed())
+
+        {
             try {
                 Socket socket = serverSocket.accept();
                 System.out.println("New client request received : " + socket);
@@ -73,63 +88,59 @@ public class Broker extends Node {
 
                 String username = dis.readUTF();
 
-                subject = dis.readUTF();
+                String subject = dis.readUTF();
                 System.out.println("connected to subject: " + subject);
+                String client = dis.readUTF();
+                if (client.equals("publisher")) {
+                    // Create a new handler object for handling this request.
+                    PublisherHandler mtch = new PublisherHandler(socket, username, subject, dis, dos, this);
+                    // Create a new Thread with this object.
+                    Thread t = new Thread(mtch);
 
-                // Create a new handler object for handling this request.
-                ClientHandler mtch = new ClientHandler(socket, username, subject, dis, dos);
-                if (!mtch.broker.equals(this)) {
-                    dis.close();
-                    dos.close();
-                    socket.close();
+                    // start the thread.
+                    t.start();
+                } else if (client.equals("subscriber")) {
+                    // Create a new handler object for handling this request.
+                    ConsumerHandler mtch = new ConsumerHandler(socket, username, subject, dis, dos, this);
+                    // Create a new Thread with this object.
+                    Thread t = new Thread(mtch);
+
+                    // start the thread.
+                    t.start();
                 }
-                // Create a new Thread with this object.
-                Thread t = new Thread(mtch);
 
-                // add this client to active clients list
-                clients.add(mtch);
-
-                // start the thread.
-                t.start();
-                return;
             } catch (IOException e) {
+                System.err.println("Error processing client connection");
                 throw e;
             }
         }
     }
 
-    // ClientHandler class
-    class ClientHandler implements Runnable {
+    // PublisherHandler class
+    class PublisherHandler implements Runnable {
         Scanner scn = new Scanner(System.in);
         private String name;
         final DataInputStream dis;
         final DataOutputStream dos;
         Socket s;
         boolean isloggedin;
-        Broker broker;
-        String subject;
+        boolean hasBrokerThisTopic;
         Topic topic;
 
         // constructor
-        public ClientHandler(Socket s, String name, String subject,
-                DataInputStream dis, DataOutputStream dos) {
+        public PublisherHandler(Socket s, String name, String subject,
+                DataInputStream dis, DataOutputStream dos, Broker thisBroker) {
             this.dis = dis;
             this.dos = dos;
             this.name = name;
-            this.subject = subject;
-            this.topic = new Topic(subject);
             this.s = s;
             this.isloggedin = true;
-            boolean brokFound = false;
-            for (Broker br : brokers) {
-                if (brokFound)
+            this.hasBrokerThisTopic = false;
+            for (Topic c : thisBroker.linkedTopics) {
+                if (c.getChannelName().equals(subject)) {
+                    this.topic = c;
+                    hasBrokerThisTopic = true;
                     break;
-                for (Topic c : br.linkedTopics) {
-                    if (c.getChannelName().equals(subject)) {
-                        broker = br;
-                        brokFound = true;
-                        break;
-                    }
                 }
             }
 
@@ -141,14 +152,14 @@ public class Broker extends Node {
             String received;
             while (true) {
                 try {
-                    Queue<String> topicsMessages = broker.topicsQueue.get(this.topic);
-                    if (topicsMessages != null) {
-                        for (String tM : topicsMessages) {
-                            this.dos.writeUTF(tM);
-                        }
-                    }
                     String type = dis.readUTF();
 
+                    if (!hasBrokerThisTopic) {
+                        System.out.println("This topic is not available for this Broker");
+                        this.s.close();
+                        break;
+                    }
+                    Broker broker = brokers.get(brokerIndex);
                     if (type.equals("1")) {
 
                         int fileNameLength = dis.readInt();
@@ -173,22 +184,17 @@ public class Broker extends Node {
                                     fileOutputStream.write(fileContentBytes);
                                     fileOutputStream.close();
                                 } catch (IOException error) {
+
                                     error.printStackTrace();
+                                    return;
                                 }
                             }
-                            for (ClientHandler mc : clients) {
-                                // if the recipient is found, write on its
-                                // output stream
-                                if (mc.isloggedin == true) {
-                                    if (broker.topicsQueue.get(this.topic) == null) {
-                                        broker.topicsQueue.put(this.topic, new LinkedList<String>());
-                                    }
-                                    broker.topicsQueue.get(this.topic)
-                                            .add(this.name + " : File Upload Successful");
-                                    mc.dos.writeUTF(this.name + " : " + fileName);
-                                    break;
-                                }
+                            if (broker.topicsQueue.get(this.topic) == null) {
+                                broker.topicsQueue.put(this.topic, new LinkedList<String>());
                             }
+                            broker.topicsQueue.get(this.topic)
+                                    .add(this.name + " : File Upload Successful");
+                            isChanged = true;
                         }
 
                     } else if (type.equals("2")) {
@@ -209,35 +215,122 @@ public class Broker extends Node {
                         String recipient = st.nextToken();
                         String MsgToSend = st.nextToken();
 
-                        // search for the recipient in the connected devices list.
-                        // clients is the vector storing client of active users
-                        for (ClientHandler mc : clients) {
-                            // if the recipient is found, write on its
-                            // output stream
-                            if (mc.isloggedin == true) {
-                                if (broker.topicsQueue.get(this.topic) == null) {
-                                    broker.topicsQueue.put(this.topic, new LinkedList<String>());
-                                }
-                                broker.topicsQueue.get(this.topic).add(this.name + " : " + MsgToSend);
-                                mc.dos.writeUTF(this.name + " : " + MsgToSend);
-                                break;
-                            }
+                        if (broker.topicsQueue.get(this.topic) == null) {
+                            broker.topicsQueue.put(this.topic, new LinkedList<String>());
                         }
+                        broker.topicsQueue.get(this.topic).add(this.name + " : " + MsgToSend);
+                        isChanged = true;
                     }
                 } catch (IOException e) {
 
                     e.printStackTrace();
+                    return;
                 }
 
             }
+            // try {
+            // // closing resources
+            // this.dis.close();
+            // this.dos.close();
+
+            // } catch (IOException e) {
+            // e.printStackTrace();
+            // }
+
+        }
+    }
+
+    // PublisherHandler class
+    class ConsumerHandler implements Runnable {
+        Scanner scn = new Scanner(System.in);
+        private String name;
+        final DataInputStream dis;
+        final DataOutputStream dos;
+        Socket s;
+        boolean isloggedin;
+        boolean hasBrokerThisTopic;
+        Topic topic;
+        Queue<String> messagesQueue;
+
+        // constructor
+        public ConsumerHandler(Socket s, String name, String subject,
+                DataInputStream dis, DataOutputStream dos, Broker thisBroker) {
+            this.dis = dis;
+            this.dos = dos;
+            this.name = name;
+            this.s = s;
+            this.isloggedin = true;
+            this.hasBrokerThisTopic = false;
+            for (Topic c : thisBroker.linkedTopics) {
+                if (c.getChannelName().equals(subject)) {
+                    this.topic = c;
+                    hasBrokerThisTopic = true;
+                    break;
+                }
+            }
+
+        }
+
+        @Override
+        public void run() {
             try {
-                // closing resources
-                this.dis.close();
-                this.dos.close();
+                String action = dis.readUTF();
+                if (action.equals("BrokersList")) {
+                    for (Broker br : brokers) {
+                        dos.writeUTF(br.name);
+                        for (Topic c : br.linkedTopics) {
+                            dos.writeUTF("#" + c.getChannelName());
+                        }
+                        dos.writeUTF("---------------------");
+                    }
+                }
+                if (!hasBrokerThisTopic) {
+                    System.out.println("This topic is not available for this Broker");
+                    this.s.close();
+                }
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            int index = 0;
+            Queue<String> topicsMessages = brokers.get(brokerIndex).topicsQueue.get(this.topic);
+            int initCount = 0;
+            if (topicsMessages != null) {
+                initCount = topicsMessages.size();
+                for (String tM : topicsMessages) {
+
+                    try {
+                        index++;
+                        this.dos.writeUTF(tM);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        return;
+                    }
+                }
+            }
+            while (true) {
+                // RUN CONTINIOUSLY UNTIL IDENTIFY CHANGE IN TOPICS QUEUE
+                if (isChanged) {
+                    topicsMessages = brokers.get(brokerIndex).topicsQueue.get(this.topic);
+                    try {
+                        if (topicsMessages.size() == initCount) {
+                        } else {
+                            String message = topicsMessages.toArray()[index].toString();
+                            this.dos.writeUTF(message);
+                            index += 1;
+                            initCount = topicsMessages.size();
+                        }
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        return;
+                    }
+
+                }
+            }
+
+            // }
+
         }
     }
 
@@ -262,5 +355,18 @@ public class Broker extends Node {
         Broker b = (Broker) o;
 
         return port == b.port && ip.equals(b.ip) && name.equals(b.name);
+    }
+
+    public String md5HashCode() {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            String ipPlusPort = this.ip + this.port;
+            md.update(ipPlusPort.getBytes(), 0, ipPlusPort.length());
+            BigInteger no = new BigInteger(1, md.digest());
+            return no.toString();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
